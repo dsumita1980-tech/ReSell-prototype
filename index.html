@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ReSell — Authenticated Smartphone Re-Commerce & Circular Hardware</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PALETTE — "Emerald & Earth"
+     ───────────────────────────────────────────────────────────────────────
+     Five source swatches drive the whole interface:
+       Emerald Green  #284139     Wasabi         #809076
+       Creased Khaki  #F8D794     Egyptian Earth #B86830
+       Noir de Vigne  #111A19
+
+     Rather than rewrite ~500 utility classes by hand, the default Tailwind
+     scales are re-pointed at ramps built from those five swatches. Every
+     existing `bg-emerald-100`, `text-slate-500`, `border-teal-200` in the
+     markup — and in the class strings app.js injects — lands on the new
+     palette automatically, and stays consistent as markup is edited.
+
+       slate/gray/zinc/neutral/stone → noir    warm-green neutrals → Noir de Vigne
+       emerald/green/lime            → forest  Emerald Green — brand primary
+       teal/cyan                     → forest  (same family; the deep greens)
+       sky/blue/indigo               → sage    Wasabi — muted, secondary data
+       amber/yellow/orange           → khaki   Creased Khaki — gilding, ratings
+       red/pink/rose                 → terra   Egyptian Earth — CTA & destructive
+       purple/violet/fuchsia         → brass   bronze, bridging khaki and terra
+
+     Ramp anchors are the source swatches verbatim: forest-800, sage-500,
+     khaki-300, terra-500, noir-950. `brass` is the one derived hue, added so
+     the four exploded-component cards stay tellable apart.
+
+     Where a swatch is too light to carry white text it is shaded for the
+     interactive role and the swatch itself kept for fills, borders and text
+     on dark — see the contrast notes on the tokens in styles.css.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+  (function () {
+    const noir   = {50:'#F8F6F0',100:'#EFEDE4',200:'#DEDDD1',300:'#C5C5B7',400:'#8D9187',500:'#6E756C',600:'#555C55',700:'#414841',800:'#313832',900:'#1F2825',950:'#111A19'};
+    const forest = {50:'#F2F5F3',100:'#E1E9E4',200:'#C3D2C9',300:'#9DB4A6',400:'#6E9080',500:'#4C7061',600:'#37574B',700:'#2E4A3F',800:'#284139',900:'#1E3129',950:'#14211C'};
+    const sage   = {50:'#F4F6F2',100:'#E7EBE3',200:'#CFD7C8',300:'#B3BFA9',400:'#99A78D',500:'#809076',600:'#6A785F',700:'#55614C',800:'#434D3D',900:'#343C31',950:'#1F251E'};
+    /* Creased Khaki is a low-chroma butter yellow. Held flat it reads as
+       bland cream, so the ramp carries real chroma either side of the
+       anchor — 400/500 are gold rather than ochre — and the gilded
+       surfaces themselves use --gild-grad, not a flat fill. */
+    const khaki  = {50:'#FFFBEF',100:'#FEF3D4',200:'#FCE7AC',300:'#F8D794',400:'#F3C255',500:'#E9A722',600:'#B0740C',700:'#8D5A0E',800:'#6E4712',900:'#553714',950:'#2E1D07'};
+    const terra  = {50:'#FDF5EE',100:'#FAE7D6',200:'#F2CBA9',300:'#E5A876',400:'#D2874C',500:'#B86830',600:'#9C5426',700:'#7D411F',800:'#62341C',900:'#4B2917',950:'#2A150B'};
+    const brass  = {50:'#FAF7F0',100:'#F3ECDD',200:'#E4D6B9',300:'#CFB98C',400:'#B79B62',500:'#9C7F45',600:'#826735',700:'#67512A',800:'#503F22',900:'#3D301B',950:'#221B0F'};
+
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            /* semantic names — use these in new markup */
+            noir, forest, sage, khaki, terra, brass,
+            /* legacy scales, re-pointed at the palette above */
+            slate: noir, gray: noir, zinc: noir, neutral: noir, stone: noir,
+            emerald: forest, green: forest, lime: forest,
+            teal: forest, cyan: forest,
+            sky: sage, blue: sage, indigo: sage,
+            amber: khaki, yellow: khaki, orange: khaki,
+            red: terra, pink: terra, rose: terra,
+            purple: brass, violet: brass, fuchsia: brass
+          },
+
+          fontFamily: {
+            display: ['Cormorant Garamond', 'Georgia', 'Times New Roman', 'serif'],
+            sans:    ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono:    ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+          },
+
+          /* Neutral-black shadows go grey and dead over a warm ivory ground.
+             Tinting the whole scale with Noir de Vigne (17 26 25) keeps
+             elevation reading as depth in the same green as the rest of the
+             UI; alpha is nudged up because a tinted shadow carries less
+             weight than a black one at equal opacity. Colour utilities
+             (shadow-slate-900/5) still override as usual. */
+          boxShadow: {
+            sm:  '0 1px 2px 0 rgb(17 26 25 / 0.06)',
+            DEFAULT: '0 1px 3px 0 rgb(17 26 25 / 0.10), 0 1px 2px -1px rgb(17 26 25 / 0.08)',
+            md:  '0 4px 6px -1px rgb(17 26 25 / 0.10), 0 2px 4px -2px rgb(17 26 25 / 0.08)',
+            lg:  '0 10px 20px -4px rgb(17 26 25 / 0.12), 0 4px 8px -4px rgb(17 26 25 / 0.08)',
+            xl:  '0 20px 30px -8px rgb(17 26 25 / 0.14), 0 8px 12px -6px rgb(17 26 25 / 0.09)',
+            '2xl': '0 28px 56px -14px rgb(17 26 25 / 0.28)',
+            inner: 'inset 0 2px 4px 0 rgb(17 26 25 / 0.07)'
+          }
+        }
+      }
+    };
+  })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- WebGL teardown on the Sell tab. r128 is the last three.js line that ships a
+     plain UMD build, so it stays a global like Chart.js rather than forcing this
+     page into modules. `defer` keeps it off the critical path; it still runs
+     before DOMContentLoaded, which is when initTeardown3D() looks for it. If the
+     CDN is blocked or the GPU has no WebGL, app.js leaves the SVG teardown in
+     place and nothing on the page changes. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<!-- Type system — three roles, set in styles.css:
+       Cormorant Garamond  display serif, mastheads & figures (the palette card's face)
+       Plus Jakarta Sans   body & UI
+       JetBrains Mono      the small tracked-out uppercase labels -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600;1,700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+
+<!-- App stylesheet (custom tokens, view router, modal/toast state, motion).
+     Must come AFTER the Tailwind CDN script above so it wins on tie. -->
+<link rel="stylesheet" href="styles.css"/>
+
+<!-- All JavaScript, including the Firebase v10 auth bootstrap, lives in
+     app.js and is loaded at the end of <body>. -->
+</head>
+<body class="antialiased min-h-screen pt-2 sm:pt-3 pb-24 md:pb-0">
+
+<!-- Scroll-driven ambient ground; colours are set on :root by app.js. -->
+<div id="ambient" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════ TOP NAVIGATION ═══════════════════════════ -->
+<!-- Floating Main Bar -->
+<header id="site-header" class="sticky top-2 sm:top-3 z-40 px-2 sm:px-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 bg-white border border-slate-200/70 rounded-2xl shadow-lg shadow-slate-900/5">
+    <!-- Brand Logo -->
+    <button onclick="nav('home')" class="flex items-center gap-2.5 flex-shrink-0 group">
+      <div class="w-10 h-10 rounded-xl bg-[#284139] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform">
+        <svg viewBox="0 0 40 40" class="w-6 h-6" fill="none">
+          <rect x="9" y="4" width="22" height="32" rx="5" stroke="#fff" stroke-width="2"/>
+          <path d="M20 11c4 0 7 3 7 7M27 18l3-3M27 18l-3-3" stroke="#F3C255" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M20 29c-4 0-7-3-7-7M13 22l-3 3M13 22l3 3" stroke="#F8D794" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="20" cy="33" r="1.5" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="text-left">
+        <div class="font-extrabold text-[1.2rem] tracking-tight text-slate-900 leading-none">Re<span class="text-[#A85B28]">Sell</span></div>
+        <div class="text-[8px] text-slate-400 font-semibold uppercase tracking-widest leading-none mt-0.5">By Nexgen</div>
+      </div>
+    </button>
+
+    <!-- Desktop Navigation Links -->
+    <nav class="hidden lg:flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+      <button onclick="nav('home')" class="nav-link px-3.5 py-2 rounded-lg hover:text-[#284139] hover:bg-slate-100 transition-all active" data-p="home">Home</button>
+      <button onclick="nav('quote')" class="nav-link px-3.5 py-2 rounded-lg hover:text-[#284139] hover:bg-slate-100 transition-all" data-p="quote"><i class="fa-solid fa-microchip text-[#A85B28] mr-1 text-xs"></i>Sell &amp; Disassemble</button>
+      <button onclick="nav('shop')" class="nav-link px-3.5 py-2 rounded-lg hover:text-[#284139] hover:bg-slate-100 transition-all" data-p="shop"><i class="fa-solid fa-store text-[#A85B28] mr-1 text-xs"></i>Storefront</button>
+      <button onclick="nav('advisor')" class="nav-link px-3.5 py-2 rounded-lg hover:text-[#284139] hover:bg-slate-100 transition-all" data-p="advisor"><i class="fa-solid fa-robot text-[#A85B28] mr-1 text-xs"></i>AI Market Advisor</button>
+      <button onclick="nav('profile')" class="nav-link px-3.5 py-2 rounded-lg hover:text-[#284139] hover:bg-slate-100 transition-all" data-p="profile"><i class="fa-solid fa-user-shield text-[#A85B28] mr-1 text-xs"></i>My Account</button>
+    </nav>
+
+    <!-- Right Actions -->
+    <div class="flex items-center gap-2.5">
+      <!-- Cart -->
+      <button onclick="openModal('cart-modal')" class="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-bold transition-all">
+        <i class="fa-solid fa-cart-shopping text-[#284139]"></i>
+        <span class="hidden sm:inline text-xs">Cart</span>
+        <span id="cart-badge" class="w-4 h-4 rounded-full bg-[#A85B28] text-white text-[10px] font-bold flex items-center justify-center">0</span>
+      </button>
+
+      <!-- Fast Quote Trigger -->
+      <button onclick="nav('quote')" class="btn-shine hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white text-xs font-bold shadow-sm transition-all">
+        <i class="fa-solid fa-bolt text-khaki-200"></i>Get Fast Quote
+      </button>
+
+      <!-- Firebase Google Sign In Button -->
+      <button id="auth-btn" onclick="triggerFirebaseGoogleLogin()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 bg-white text-xs font-bold text-slate-700 hover:shadow-sm transition-all">
+        <img id="nav-user-photo" src="" class="w-4 h-4 rounded-full hidden object-cover" />
+        <svg id="nav-google-icon" class="w-4 h-4" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span id="auth-label">Sign in with Google</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════ MAIN VIEW CONTAINER ═══════════════════════════ -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+<!-- ─────────────────────────── 1. HOME VIEW ───────────────────────────────── -->
+<div id="view-home" class="view on">
+
+<!-- ░░ SECTION 1 · HERO ░░ -->
+<section id="sec-hero" class="scroll-mt-24 pt-1 pb-12 sm:pb-16 space-y-5">
+  <div class="canopy canopy-down grain" aria-hidden="true"></div>
+  <!-- Hero: headline + CTA on the left, component receipt on the right -->
+  <div class="hero-enter relative text-white pt-8 sm:pt-14 pb-10 sm:pb-14">
+
+    <div class="relative z-10 grid lg:grid-cols-2 gap-10 lg:gap-8 items-center">
+      <!-- Left: copy -->
+      <div class="hero-in-1 text-center lg:text-left">
+        <h1 class="text-5xl sm:text-6xl xl:text-7xl leading-[1.02] mb-5 text-white">
+          Don't sell your phone<br/><span class="ul-draw grad-text serif-italic">for a flat quote.</span>
+        </h1>
+        <p class="text-slate-200 text-sm sm:text-base leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
+          Get paid for what's actually <span class="serif-italic text-khaki-300">inside</span> your phone. ReSell prices the display, camera, logic board, battery and housing at live market rates — 100% transparent, with 1-year certified warranties.
+        </p>
+        <div class="flex flex-wrap justify-center lg:justify-start gap-3">
+          <button onclick="nav('quote')" class="btn-shine flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white font-bold text-sm shadow-lg transition-all hover:-translate-y-0.5">
+            <i class="fa-solid fa-mobile-screen-button"></i> Value My Phone
+          </button>
+          <button onclick="nav('shop')" class="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#3B4F46] hover:bg-[#48604F] text-white font-bold text-sm border border-white/25 transition-all hover:-translate-y-0.5">
+            <i class="fa-solid fa-bag-shopping"></i> Browse Refurbished
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: component value card -->
+      <div class="flex justify-center lg:justify-end">
+        <div class="val-card glass hero-in-2 w-full max-w-sm p-5 sm:p-6">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[.16em] text-khaki-300">Sample payout</p>
+              <p class="text-xs text-slate-300 mt-0.5">iPhone 14 Pro · 256GB · Good</p>
+            </div>
+            <i class="fa-solid fa-mobile-screen-button text-2xl text-khaki-300/80"></i>
+          </div>
+          <p class="text-4xl sm:text-5xl font-black text-white leading-none tracking-tight">₹29,100</p>
+          <p class="text-[11px] text-slate-400 mt-1.5 mb-4">Sum of five independently priced parts</p>
+          <div class="space-y-2">
+            <div class="val-row"><span class="text-xs font-bold text-slate-200"><i class="fa-solid fa-display text-sky-300 mr-2"></i>Display</span><span class="text-xs font-black text-white">₹9,400</span></div>
+            <div class="val-row"><span class="text-xs font-bold text-slate-200"><i class="fa-solid fa-camera text-amber-300 mr-2"></i>Camera</span><span class="text-xs font-black text-white">₹5,200</span></div>
+            <div class="val-row"><span class="text-xs font-bold text-slate-200"><i class="fa-solid fa-battery-three-quarters text-rose-300 mr-2"></i>Battery</span><span class="text-xs font-black text-white">₹2,300</span></div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-3.5 text-center">+ logic board &amp; housing · 14-day price lock</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Greener India Campaign Banner. A translucent panel rather than a second
+       dark slab — on the canopy it reads as a card, not another block. -->
+  <div class="glass rounded-2xl p-4 text-white flex flex-col sm:flex-row items-center justify-between gap-3 border border-white/15">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-khaki-500/20 border border-khaki-400/40 flex items-center justify-center text-khaki-300 text-xl flex-shrink-0">
+        <i class="fa-solid fa-seedling"></i>
+      </div>
+      <div class="text-xs">
+        <span class="bg-khaki-400/20 text-khaki-300 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Official Green India Drive</span>
+        <h4 class="font-extrabold text-sm text-white mt-0.5">₹5.00 E-Waste &amp; Tree Planting Contribution on Every Trade</h4>
+        <p class="text-slate-300 text-[11px]">Directly pledged to certified e-waste recycling plants and afforestation drives.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-xs font-bold text-khaki-200">
+      <div class="text-right">
+        <p class="text-sm font-black text-white">9,658 Trees</p>
+        <p class="text-[10px] text-slate-400">Planted this year</p>
+      </div>
+      <button onclick="toast('Thank you for supporting the Greener India Initiative!')" class="gilt-fill px-3.5 py-2 rounded-xl font-black text-xs shadow-sm hover:brightness-105 transition">
+        Learn More
+      </button>
+    </div>
+  </div>
+
+  <!-- Scroll cue -->
+  <div class="hidden sm:flex justify-center pt-2">
+    <button onclick="scrollToSection('sec-worth')" class="flex flex-col items-center gap-1 text-slate-300 hover:text-khaki-300 transition-colors" aria-label="Scroll to component breakdown">
+      <span class="text-[10px] font-bold uppercase tracking-[.2em]">Scroll</span>
+      <i class="fa-solid fa-chevron-down text-xs float-slow"></i>
+    </button>
+  </div>
+</section>
+
+<!-- ░░ SECTION 2 · SEE WHAT YOUR PHONE IS WORTH ░░ -->
+<section id="sec-worth" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="mb-8">
+    <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">
+      <span class="w-6 h-px sec-rule"></span>The Breakdown
+    </span>
+    <h2 class="text-3xl sm:text-5xl text-slate-900 mt-2">See what your phone is <span class="ul-draw serif-italic sec-tint">actually worth.</span></h2>
+    <p class="text-sm text-slate-500 mt-1.5 max-w-xl">One device goes in. Five priced components come out. Here is a real teardown of a Galaxy S21 FE in Good condition.</p>
+  </div>
+
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.35fr)] items-center gap-6 lg:gap-8">
+    <!-- Left: the device -->
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 flex flex-col items-center text-center">
+      <div class="phone-glyph mb-5" aria-hidden="true"></div>
+      <h3 class="font-black text-slate-900">Galaxy S21 FE</h3>
+      <p class="text-xs text-slate-500 mt-1">128GB · Good condition · 3 yrs old</p>
+      <p class="mt-4 text-[11px] font-bold uppercase tracking-[.14em] text-slate-400">Flat-quote sites offer</p>
+      <p class="text-2xl font-black text-slate-400 line-through">₹12,000</p>
+    </div>
+
+    <!-- Divider arrow -->
+    <div class="flex lg:flex-col items-center justify-center gap-3 text-[#284139]">
+      <span class="hidden lg:block w-px h-10 bg-teal-200"></span>
+      <span class="w-11 h-11 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center shadow-sm">
+        <i class="fa-solid fa-arrow-right text-sm hidden lg:block"></i>
+        <i class="fa-solid fa-arrow-down text-sm lg:hidden"></i>
+      </span>
+      <span class="hidden lg:block w-px h-10 bg-teal-200"></span>
+    </div>
+
+    <!-- Right: the component ledger -->
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">Components priced</h3>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Live spot rates</span>
+      </div>
+      <div class="space-y-2.5">
+        <div class="ledger-row">
+          <span class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center"><i class="fa-solid fa-display"></i></span>
+          <span><span class="block font-bold text-sm text-slate-900">Display Panel</span><span class="block text-[11px] text-slate-400">AMOLED · no burn-in</span></span>
+          <span class="text-lg font-black text-slate-900">₹4,200</span>
+        </div>
+        <div class="ledger-row">
+          <span class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fa-solid fa-microchip"></i></span>
+          <span><span class="block font-bold text-sm text-slate-900">Logic Board</span><span class="block text-[11px] text-slate-400">SoC · RAM · modem</span></span>
+          <span class="text-lg font-black text-slate-900">₹4,800</span>
+        </div>
+        <div class="ledger-row">
+          <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-camera"></i></span>
+          <span><span class="block font-bold text-sm text-slate-900">Camera Array</span><span class="block text-[11px] text-slate-400">Wide · ultra-wide · tele</span></span>
+          <span class="text-lg font-black text-slate-900">₹2,100</span>
+        </div>
+        <div class="ledger-row">
+          <span class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center"><i class="fa-solid fa-box"></i></span>
+          <span><span class="block font-bold text-sm text-slate-900">Housing &amp; Chassis</span><span class="block text-[11px] text-slate-400">Frame · back glass</span></span>
+          <span class="text-lg font-black text-slate-900">₹1,100</span>
+        </div>
+        <div class="ledger-row">
+          <span class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"><i class="fa-solid fa-battery-three-quarters"></i></span>
+          <span><span class="block font-bold text-sm text-slate-900">Battery Cell</span><span class="block text-[11px] text-slate-400">91% measured health</span></span>
+          <span class="text-lg font-black text-slate-900">₹900</span>
+        </div>
+      </div>
+      <div class="mt-5 pt-4 border-t border-dashed border-slate-200 flex items-end justify-between gap-3">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-[.14em] text-slate-400">Your component payout</p>
+          <p class="text-[11px] text-emerald-700 font-bold mt-0.5">₹1,100 more than the flat quote</p>
+        </div>
+        <p class="text-3xl sm:text-4xl font-black text-[#284139] leading-none">₹13,100</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ SECTION 3 · WHY RESELL ░░ -->
+<section id="sec-trust" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="mb-8">
+    <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">
+      <span class="w-6 h-px sec-rule"></span>Why ReSell
+    </span>
+    <h2 class="text-3xl sm:text-5xl text-slate-900 mt-2">Built to be checked, <span class="ul-draw serif-italic sec-tint">not trusted blindly.</span></h2>
+    <p class="text-sm text-slate-500 mt-1.5 max-w-xl">The same device, valued two ways. One hides the maths — the other shows every line.</p>
+  </div>
+
+  <!-- Flat quote VS component payout -->
+  <div class="grid md:grid-cols-[1fr_auto_1fr] items-stretch gap-4 mb-6">
+    <div class="rounded-3xl border border-slate-200 bg-slate-50 p-6 sm:p-7">
+      <p class="text-[11px] font-black uppercase tracking-[.16em] text-slate-400">Flat quote elsewhere</p>
+      <p class="text-4xl sm:text-5xl font-black text-slate-400 mt-2 leading-none">₹12,000</p>
+      <ul class="mt-5 space-y-2.5 text-xs text-slate-500 font-semibold">
+        <li class="flex gap-2.5"><i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>One number, no breakdown</li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>Deductions argued at your door</li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>Working parts written off as scrap</li>
+      </ul>
+    </div>
+
+    <div class="flex md:flex-col items-center justify-center gap-2">
+      <span class="hidden md:block w-px flex-1 bg-slate-200"></span>
+      <span class="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black tracking-[.16em]">VS</span>
+      <span class="hidden md:block w-px flex-1 bg-slate-200"></span>
+    </div>
+
+    <div class="rounded-3xl border-2 border-[#284139] bg-white p-6 sm:p-7 shadow-md relative">
+      <span class="absolute -top-3 right-5 px-2.5 py-1 rounded-full bg-[#A85B28] text-white text-[10px] font-black uppercase tracking-wider">+₹1,100</span>
+      <p class="text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">ReSell component payout</p>
+      <p class="text-4xl sm:text-5xl font-black text-[#284139] mt-2 leading-none">₹13,100</p>
+      <ul class="mt-5 space-y-2.5 text-xs text-slate-600 font-semibold">
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-[#A85B28] mt-0.5"></i>Every part priced on its own line</li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-[#A85B28] mt-0.5"></i>Locked for 14 days, no renegotiation</li>
+        <li class="flex gap-2.5"><i class="fa-solid fa-check text-[#A85B28] mt-0.5"></i>Healthy parts resold, dead parts recycled</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="reveal-stagger grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex gap-3.5">
+      <i class="fa-solid fa-shield-halved text-[#A85B28] text-lg mt-0.5"></i>
+      <div>
+        <h4 class="font-bold text-sm text-slate-900 mb-0.5">1-Year Warranty</h4>
+        <p class="text-xs text-slate-500 leading-relaxed">Every certified device ships with guaranteed replacement cover.</p>
+      </div>
+    </div>
+    <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex gap-3.5">
+      <i class="fa-solid fa-list-check text-[#284139] text-lg mt-0.5"></i>
+      <div>
+        <h4 class="font-bold text-sm text-slate-900 mb-0.5">Open BOM Pricing</h4>
+        <p class="text-xs text-slate-500 leading-relaxed">See the exact formula and every component's contribution.</p>
+      </div>
+    </div>
+    <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex gap-3.5">
+      <i class="fa-solid fa-recycle text-[#A85B28] text-lg mt-0.5"></i>
+      <div>
+        <h4 class="font-bold text-sm text-slate-900 mb-0.5">R2 Certified Recycling</h4>
+        <p class="text-xs text-slate-500 leading-relaxed">Dead parts go to audited smelters, never to landfill.</p>
+      </div>
+    </div>
+    <div class="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex gap-3.5">
+      <i class="fa-solid fa-bolt text-[#284139] text-lg mt-0.5"></i>
+      <div>
+        <h4 class="font-bold text-sm text-slate-900 mb-0.5">Instant UPI Payout</h4>
+        <p class="text-xs text-slate-500 leading-relaxed">Money lands before our technician leaves your door.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ SECTION 4 · LIVE IMPACT ░░ -->
+<section id="sec-impact" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="mb-7">
+    <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">
+      <span class="w-6 h-px sec-rule"></span>Live Impact
+    </span>
+    <h2 class="text-3xl sm:text-5xl text-slate-900 mt-2">Numbers that <span class="ul-draw serif-italic sec-tint">keep moving.</span></h2>
+    <p class="text-sm text-slate-500 mt-1.5 max-w-xl">Updated as every device is valued, harvested and recycled across our certified hub network.</p>
+  </div>
+  <div class="reveal-stagger grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div class="text-2xl sm:text-3xl font-black text-[#284139]" data-count="37" data-prefix="+" data-suffix="%">+37%</div>
+      <p class="text-xs text-slate-500 mt-1.5">More value vs flat quote</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div class="text-2xl sm:text-3xl font-black text-[#A85B28]" data-count="14200" data-suffix="+">14,200+</div>
+      <p class="text-xs text-slate-500 mt-1.5">OEM Parts Harvested</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div class="text-2xl sm:text-3xl font-black text-[#284139]" data-count="100" data-suffix="%">100%</div>
+      <p class="text-xs text-slate-500 mt-1.5">Transparent BOM Pricing</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm text-center hover:shadow-md hover:-translate-y-0.5 transition-all">
+      <div class="text-2xl sm:text-3xl font-black text-[#A85B28]" data-count="48290" data-suffix=" kg">48,290 kg</div>
+      <p class="text-xs text-slate-500 mt-1.5">CO₂ Equivalent Saved</p>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ SECTION 5 · HOW IT WORKS — horizontal timeline on desktop, stacked with arrows on mobile ░░ -->
+<section id="sec-how" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="mb-9 sm:mb-12">
+    <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">
+      <span class="w-6 h-px sec-rule"></span>How It Works
+    </span>
+    <h2 class="text-4xl sm:text-6xl text-slate-900 mt-2 leading-[1.03]">
+      Four steps.<br class="sm:hidden"/> <span class="ul-draw serif-italic sec-tint">Zero guesswork.</span>
+    </h2>
+    <p class="text-sm sm:text-base text-slate-500 mt-3 max-w-xl">No haggling, no surprise deductions at the door. You see the same breakdown our technicians do — start to payout in under 48 hours.</p>
+  </div>
+
+  <ol class="tl reveal-stagger grid lg:grid-cols-4 lg:gap-6">
+    <li class="tl-step">
+      <div class="tl-head"><span class="tl-num">01</span><span class="tl-line" aria-hidden="true"></span></div>
+      <div class="tl-card">
+        <h3 class="tl-title">Tell us your phone</h3>
+        <div class="tl-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
+        <p class="tl-meta">Model, storage, condition</p>
+        <p class="tl-note">Our catalogue goes back 15 years — vintage handsets included.</p>
+      </div>
+      <div class="tl-down lg:hidden" aria-hidden="true"><i class="fa-solid fa-arrow-down"></i></div>
+    </li>
+
+    <li class="tl-step">
+      <div class="tl-head"><span class="tl-num">02</span><span class="tl-line" aria-hidden="true"></span></div>
+      <div class="tl-card">
+        <h3 class="tl-title">We inspect every component</h3>
+        <div class="tl-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+        <p class="tl-meta">Display · Camera · Battery · Board · Housing</p>
+        <p class="tl-note">A 15-minute bench diagnostic grades each part on its own merits.</p>
+      </div>
+      <div class="tl-down lg:hidden" aria-hidden="true"><i class="fa-solid fa-arrow-down"></i></div>
+    </li>
+
+    <li class="tl-step">
+      <div class="tl-head"><span class="tl-num">03</span><span class="tl-line" aria-hidden="true"></span></div>
+      <div class="tl-card tl-card-hero">
+        <h3 class="tl-title">Get your component-level value</h3>
+        <p class="tl-value">₹29,100</p>
+        <p class="tl-meta">Locked for 14 days</p>
+        <p class="tl-note">Market dips after you lock never touch your offer.</p>
+      </div>
+      <div class="tl-down lg:hidden" aria-hidden="true"><i class="fa-solid fa-arrow-down"></i></div>
+    </li>
+
+    <li class="tl-step">
+      <div class="tl-head"><span class="tl-num">04</span><span class="tl-line" aria-hidden="true"></span></div>
+      <div class="tl-card">
+        <h3 class="tl-title">We collect &amp; refurbish</h3>
+        <div class="tl-icon"><i class="fa-solid fa-recycle"></i></div>
+        <p class="tl-meta">Parts get a second life</p>
+        <p class="tl-note">Free doorstep pickup, instant UPI transfer, R2 recycling for the rest.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="mt-9 flex flex-wrap items-center gap-3">
+    <button onclick="nav('quote')" class="btn-shine flex items-center gap-2 px-6 py-3.5 rounded-xl bg-[#284139] hover:bg-[#1E3129] text-white font-bold text-sm shadow-lg transition-all hover:-translate-y-0.5">
+      <i class="fa-solid fa-bolt"></i> Start at Step 01
+    </button>
+    <p class="text-xs text-slate-500 font-semibold">Free valuation · no obligation to sell</p>
+  </div>
+</section>
+
+<!-- ░░ SECTION 6 · REFURBISHED STORE PREVIEW ░░ -->
+<section id="sec-store" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="flex flex-wrap items-end justify-between gap-4 mb-7">
+    <div>
+      <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">
+        <span class="w-6 h-px sec-rule"></span>Refurbished Store
+      </span>
+      <h2 class="text-3xl sm:text-5xl text-slate-900 mt-2">The other side <span class="ul-draw serif-italic sec-tint">of the loop.</span></h2>
+      <p class="text-sm text-slate-500 mt-1.5 max-w-xl">Harvested parts rebuild these devices. Every one ships with a 1-year warranty.</p>
+    </div>
+    <button onclick="nav('shop')" class="text-xs font-bold text-[#A85B28] hover:underline whitespace-nowrap">Browse the full store →</button>
+  </div>
+  <div class="reveal-stagger grid sm:grid-cols-3 gap-4 sm:gap-5">
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 transition-all">
+      <div class="p-6 bg-slate-50 flex items-center justify-center h-32 relative">
+        <i class="fa-brands fa-apple text-5xl text-[#284139]"></i>
+        <span class="absolute top-2.5 left-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800"><i class="fa-solid fa-shield-halved mr-1"></i>1-Yr Warranty</span>
+      </div>
+      <div class="p-4 flex-1 flex flex-col justify-between gap-3">
+        <div><h4 class="font-bold text-sm text-slate-900">iPhone 15 Pro (128GB)</h4><p class="text-[11px] text-slate-400 mt-0.5">Natural Titanium · Batt 98%</p></div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-baseline gap-2"><span class="text-lg font-black text-[#284139]">₹84,999</span><span class="text-xs text-slate-400 line-through">₹1,19,900</span></div>
+          <button onclick="openPDP(1)" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs">View</button>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 transition-all">
+      <div class="p-6 bg-slate-50 flex items-center justify-center h-32 relative">
+        <i class="fa-solid fa-mobile-screen text-5xl text-[#284139]"></i>
+        <span class="absolute top-2.5 left-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800"><i class="fa-solid fa-shield-halved mr-1"></i>1-Yr Warranty</span>
+      </div>
+      <div class="p-4 flex-1 flex flex-col justify-between gap-3">
+        <div><h4 class="font-bold text-sm text-slate-900">Galaxy S24 Ultra (256GB)</h4><p class="text-[11px] text-slate-400 mt-0.5">Titanium Gray · Batt 99%</p></div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-baseline gap-2"><span class="text-lg font-black text-[#284139]">₹79,999</span><span class="text-xs text-slate-400 line-through">₹1,09,999</span></div>
+          <button onclick="openPDP(6)" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs">View</button>
+        </div>
+      </div>
+    </div>
+    <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-1 transition-all">
+      <div class="p-6 bg-slate-50 flex items-center justify-center h-32 relative">
+        <i class="fa-brands fa-google text-5xl text-[#284139]"></i>
+        <span class="absolute top-2.5 left-2.5 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800"><i class="fa-solid fa-shield-halved mr-1"></i>1-Yr Warranty</span>
+      </div>
+      <div class="p-4 flex-1 flex flex-col justify-between gap-3">
+        <div><h4 class="font-bold text-sm text-slate-900">Pixel 8 Pro (128GB)</h4><p class="text-[11px] text-slate-400 mt-0.5">Obsidian · Batt 92%</p></div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-baseline gap-2"><span class="text-lg font-black text-[#284139]">₹38,499</span><span class="text-xs text-slate-400 line-through">₹52,000</span></div>
+          <button onclick="openPDP(10)" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs">View</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ SECTION 7 · YOUR ACTIVITY ░░ -->
+<section id="sec-activity" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="flex flex-wrap items-end justify-between gap-4 mb-7">
+    <div>
+      <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] sec-eyebrow">
+        <span class="w-6 h-px sec-rule"></span>Your Activity
+      </span>
+      <h2 class="text-3xl sm:text-5xl text-slate-900 mt-2">Your hub, quotes <span class="ul-draw serif-italic sec-tint">&amp; impact.</span></h2>
+      <p class="text-sm text-slate-500 mt-1.5 max-w-xl">Everything tied to your account, in one place.</p>
+    </div>
+    <button onclick="nav('profile')" class="text-xs font-bold text-[#A85B28] hover:underline whitespace-nowrap">Open full dashboard →</button>
+  </div>
+  <div class="reveal-stagger grid md:grid-cols-3 gap-5">
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+      <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center mb-3"><i class="fa-solid fa-store"></i></div>
+      <h3 class="font-bold text-slate-900 mb-1">Nearest Certified Hub</h3>
+      <p class="text-xs text-slate-500 mb-3">Walk-in for 15-minute diagnostic &amp; instant doorstep payout</p>
+      <div class="p-3 bg-slate-50 rounded-xl flex items-center justify-between text-xs">
+        <div><p class="font-bold" id="hub-name">Bhatpara Hub, WB</p><p class="text-slate-400">10 AM – 9 PM</p></div>
+        <button onclick="openModal('loc-modal')" class="font-bold text-[#284139] hover:underline">Change</button>
+      </div>
+    </div>
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+      <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3"><i class="fa-solid fa-mobile-screen-button"></i></div>
+      <h3 class="font-bold text-slate-900 mb-1">Saved Quotation</h3>
+      <p class="text-xs text-slate-500 mb-3">14-day price lock guarantee on your device</p>
+      <div class="p-3 bg-slate-50 rounded-xl flex items-center justify-between text-xs">
+        <div><p class="font-bold" id="home-saved-quote-title">No Active Quote</p><p class="text-slate-400" id="home-saved-quote-price">Value a phone to lock price</p></div>
+        <button onclick="nav('quote')" class="px-2.5 py-1 rounded-lg bg-[#284139] hover:bg-[#1E3129] text-white font-semibold transition-colors">Value</button>
+      </div>
+    </div>
+    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all">
+      <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#A85B28] flex items-center justify-center mb-3"><i class="fa-solid fa-leaf"></i></div>
+      <h3 class="font-bold text-slate-900 mb-1">E-Waste Neutrality</h3>
+      <p class="text-xs text-slate-500 mb-3">Dead components routed to R2 hydrometallurgical smelters</p>
+      <div class="flex justify-between pt-1">
+        <div><p class="text-xl font-black text-[#A85B28]">48,290 kg</p><p class="text-[10px] text-slate-400">CO₂ Saved</p></div>
+        <div class="text-right"><p class="text-xl font-black text-[#284139]">14,200+</p><p class="text-[10px] text-slate-400">Parts Salvaged</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░ SECTIONS 8-9 · CLOSING CTA + CONTACT ░░ -->
+<!-- The two share one .canopy. Split between them, each section sized its own
+     copy of the gradient, and the mismatch showed as a band across the panel
+     where they met — so the ground rises out of the ivory once, carries both,
+     and dissolves back into it below the contact form. -->
+<div class="closing-panel">
+<div class="canopy canopy-close grain" aria-hidden="true"></div>
+
+<section id="sec-cta" class="reveal scroll-mt-24 py-12 sm:py-16">
+  <div class="relative text-white text-center py-10 sm:py-16">
+    <div class="relative z-10 max-w-2xl mx-auto">
+      <h2 class="text-4xl sm:text-6xl mb-4 leading-[1.04]">Give your phone a <span class="grad-text serif-italic">second life.</span></h2>
+      <p class="text-slate-300 text-sm sm:text-base mb-8">Free valuation, 14-day price lock, zero obligation to sell.</p>
+      <div class="flex flex-wrap gap-3 justify-center">
+        <button onclick="nav('quote')" class="btn-shine flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white font-bold text-sm shadow-lg transition-all hover:-translate-y-0.5">
+          <i class="fa-solid fa-bolt"></i> Get a Quote
+        </button>
+        <button onclick="nav('shop')" class="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#3B4F46] hover:bg-[#48604F] text-white font-bold text-sm border border-white/25 transition-all hover:-translate-y-0.5">
+          <i class="fa-solid fa-bag-shopping"></i> Browse the Store
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- The reveal is on the blocks inside, not on the section: it animates
+     opacity, transform and filter, and on an ancestor any of those switch
+     off the .glass panels below it until the transition ends. -->
+<section id="sec-contact" class="scroll-mt-24 pt-12 sm:pt-16 pb-32 sm:pb-36">
+  <div class="relative z-10 grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
+
+    <div>
+      <div class="reveal">
+      <span class="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[.16em] text-khaki-300">
+        <span class="w-6 h-px bg-khaki-400/70"></span>Contact Us
+      </span>
+      <h2 class="text-3xl sm:text-5xl text-white mt-2 leading-[1.08]">Talk to a real <span class="grad-text serif-italic">human.</span></h2>
+      <p class="text-sm text-slate-300 mt-2.5 max-w-md">Questions on a quote, a warranty claim, a bulk pickup or a partnership — our Bhatpara hub team answers every message within one working day.</p>
+      </div>
+
+      <div class="mt-7 space-y-3">
+        <a href="mailto:support@resell.in" class="reveal glass flex items-center gap-4 p-4 rounded-2xl bg-white/[.06] border border-white/10 hover:bg-white/[.11] hover:border-khaki-400/40 transition-all group">
+          <div class="w-10 h-10 rounded-xl bg-khaki-500/20 border border-khaki-400/40 flex items-center justify-center text-khaki-300 flex-shrink-0">
+            <i class="fa-solid fa-envelope"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-black uppercase tracking-[.16em] text-khaki-300">Email</p>
+            <p class="text-sm font-bold text-white truncate group-hover:underline">support@resell.in</p>
+          </div>
+        </a>
+        <a href="tel:+911800123456" class="reveal glass flex items-center gap-4 p-4 rounded-2xl bg-white/[.06] border border-white/10 hover:bg-white/[.11] hover:border-khaki-400/40 transition-all group">
+          <div class="w-10 h-10 rounded-xl bg-khaki-500/20 border border-khaki-400/40 flex items-center justify-center text-khaki-300 flex-shrink-0">
+            <i class="fa-solid fa-phone"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-black uppercase tracking-[.16em] text-khaki-300">Toll-free · 10 AM – 9 PM IST</p>
+            <p class="text-sm font-bold text-white truncate group-hover:underline">1800 123 456</p>
+          </div>
+        </a>
+        <div class="reveal glass flex items-center gap-4 p-4 rounded-2xl bg-white/[.06] border border-white/10">
+          <div class="w-10 h-10 rounded-xl bg-khaki-500/20 border border-khaki-400/40 flex items-center justify-center text-khaki-300 flex-shrink-0">
+            <i class="fa-solid fa-location-dot"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-black uppercase tracking-[.16em] text-khaki-300">Certified Hub</p>
+            <p class="text-sm font-bold text-white">Bhatpara Hub, North 24 Parganas, WB 743123</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal flex items-center gap-3 mt-6">
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-[.14em]">Follow</span>
+        <span class="w-6 h-px bg-white/15"></span>
+        <a href="#" aria-label="ReSell on X" class="w-9 h-9 rounded-xl bg-white/[.06] border border-white/10 flex items-center justify-center text-slate-300 hover:text-khaki-300 hover:border-khaki-400/40 transition-all"><i class="fa-brands fa-x-twitter"></i></a>
+        <a href="#" aria-label="ReSell on Instagram" class="w-9 h-9 rounded-xl bg-white/[.06] border border-white/10 flex items-center justify-center text-slate-300 hover:text-khaki-300 hover:border-khaki-400/40 transition-all"><i class="fa-brands fa-instagram"></i></a>
+        <a href="#" aria-label="ReSell on LinkedIn" class="w-9 h-9 rounded-xl bg-white/[.06] border border-white/10 flex items-center justify-center text-slate-300 hover:text-khaki-300 hover:border-khaki-400/40 transition-all"><i class="fa-brands fa-linkedin-in"></i></a>
+      </div>
+    </div>
+
+    <form id="contact-form" onsubmit="submitContactForm(event)" novalidate
+          class="reveal bg-[#31443C] border border-white/[.12] rounded-3xl p-6 sm:p-7 space-y-4 shadow-xl shadow-black/20">
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="contact-name" class="block text-[11px] font-black uppercase tracking-[.14em] text-khaki-300 mb-1.5">Your name</label>
+          <input id="contact-name" name="name" type="text" autocomplete="name" placeholder="Ritu Sharma"
+                 class="w-full px-3.5 py-3 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-khaki-400/60 focus:border-transparent transition-all" />
+        </div>
+        <div>
+          <label for="contact-email" class="block text-[11px] font-black uppercase tracking-[.14em] text-khaki-300 mb-1.5">Email</label>
+          <input id="contact-email" name="email" type="email" autocomplete="email" placeholder="you@example.com"
+                 class="w-full px-3.5 py-3 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-khaki-400/60 focus:border-transparent transition-all" />
+        </div>
+      </div>
+      <div>
+        <label for="contact-topic" class="block text-[11px] font-black uppercase tracking-[.14em] text-khaki-300 mb-1.5">What is this about?</label>
+        <select id="contact-topic" name="topic"
+                class="w-full px-3.5 py-3 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-khaki-400/60 focus:border-transparent transition-all">
+          <option class="text-slate-900" value="A quote or valuation">A quote or valuation</option>
+          <option class="text-slate-900" value="An order or delivery">An order or delivery</option>
+          <option class="text-slate-900" value="A warranty claim">A warranty claim</option>
+          <option class="text-slate-900" value="Bulk / business pickup">Bulk / business pickup</option>
+          <option class="text-slate-900" value="Something else">Something else</option>
+        </select>
+      </div>
+      <div>
+        <label for="contact-msg" class="block text-[11px] font-black uppercase tracking-[.14em] text-khaki-300 mb-1.5">Message</label>
+        <textarea id="contact-msg" name="message" rows="4" placeholder="Tell us what you need — include your quote or order ID if you have one."
+                  class="w-full px-3.5 py-3 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-white placeholder-slate-400 resize-y focus:outline-none focus:ring-2 focus:ring-khaki-400/60 focus:border-transparent transition-all"></textarea>
+      </div>
+      <p id="contact-error" class="hidden text-xs font-bold text-red-300"><i class="fa-solid fa-circle-exclamation mr-1"></i><span id="contact-error-msg"></span></p>
+      <button type="submit"
+              class="btn-shine w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white font-bold text-sm shadow-lg transition-all hover:-translate-y-0.5">
+        <i class="fa-solid fa-paper-plane"></i> Send message
+      </button>
+      <p class="text-[11px] text-slate-400 text-center">We reply within 1 working day. No marketing, ever.</p>
+    </form>
+
+  </div>
+</section>
+
+</div><!-- /.closing-panel -->
+
+</div>
+
+<!-- ─────────────────────────── 2. VALUATION & DISASSEMBLY (RESET TO CLEAN DEFAULT ON REFRESH) ───────────────────── -->
+<div id="view-quote" class="view space-y-6">
+
+  <div class="text-center max-w-xl mx-auto">
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-[#284139] text-xs font-bold border border-teal-100 mb-2">
+      <i class="fa-solid fa-layer-group text-[#A85B28] text-xs"></i>Real-Time BOM Decomposition Engine
+    </span>
+    <h2 class="text-4xl text-slate-900">Device Disassembly <span class="ul-draw serif-italic text-[#284139]">&amp; Valuation</span></h2>
+    <p class="text-sm text-slate-500 mt-1">Select phone, purchase date (last 15 years), and condition for an instant visual teardown.</p>
+  </div>
+
+  <!-- Input Selection Bar -->
+  <div class="bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">1. Select Brand</label>
+        <select id="sel-brand" onchange="updateModels(); refreshGradeEstimate()" class="w-full px-3.5 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-[#284139] focus:outline-none bg-slate-50 focus:bg-white">
+          <option value="" disabled selected>(Choose Brand)</option>
+          <option value="realme">Realme</option>
+          <option value="apple">Apple</option>
+          <option value="samsung">Samsung</option>
+          <option value="google">Google Pixel</option>
+          <option value="oneplus">OnePlus</option>
+          <option value="xiaomi">Xiaomi / Redmi</option>
+          <option value="oppo">Oppo</option>
+          <option value="vivo">Vivo / iQOO</option>
+          <option value="motorola">Motorola</option>
+          <option value="nothing">Nothing Phone</option>
+          <option value="nokia">Nokia</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">2. Select Phone Model</label>
+        <select id="sel-model" onchange="refreshGradeEstimate()" class="w-full px-3.5 py-3 rounded-xl border border-slate-200 text-sm font-semibold focus:ring-2 focus:ring-[#284139] focus:outline-none bg-slate-50 focus:bg-white">
+          <option value="" disabled selected>(Choose Model)</option>
+        </select>
+      </div>
+
+      <!-- 15-Year Purchase Range -->
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">3. Purchase Date (15-Yr)</label>
+        <div class="grid grid-cols-2 gap-1.5">
+          <select id="sel-buy-year" onchange="refreshGradeEstimate()" class="px-2 py-3 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white">
+            <option value="" disabled selected>(Year)</option>
+            <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
+            <option value="2023">2023 (3 Yrs)</option><option value="2022">2022</option><option value="2021">2021 (5 Yrs)</option>
+            <option value="2020">2020</option><option value="2019">2019</option><option value="2018">2018</option>
+            <option value="2017">2017</option><option value="2016">2016 (10 Yrs)</option><option value="2015">2015</option>
+            <option value="2014">2014</option><option value="2013">2013</option><option value="2012">2012</option>
+            <option value="2011">2011 (15 Yrs)</option>
+          </select>
+          <select id="sel-buy-month" onchange="refreshGradeEstimate()" class="px-2 py-3 rounded-xl border border-slate-200 text-xs font-bold bg-slate-50 focus:bg-white">
+            <option value="" disabled selected>(Month)</option>
+            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Coarse condition band, derived from the per-component grades below.
+         Kept as a field so the quote record and teardown copy have one value
+         to read; never edited by hand — refreshGradeEstimate() owns it. -->
+    <input type="hidden" id="sel-cond" value="flawless">
+
+    <!-- Action Buttons -->
+    <div class="flex flex-wrap gap-3">
+      <button onclick="runDisassembly()" class="w-full sm:w-auto justify-center flex items-center gap-2 px-6 sm:px-8 py-3.5 rounded-xl bg-[#284139] hover:bg-[#1E3129] text-white font-bold text-sm shadow-md transition-all hover:scale-[1.01]">
+        <i class="fa-solid fa-screwdriver-wrench text-khaki-200"></i> Check &amp; Disassemble Phone
+      </button>
+      <button onclick="openModal('formula-modal')" class="w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-3.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm transition-all">
+        <i class="fa-solid fa-calculator text-[#284139]"></i> View Transparent BOM Formula
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Teardown stage + grading, side by side ─────────────────────────────
+       Left column: the exploded hardware diagram on top, the pricing window
+       under it. Right column: the per-component grading questions. Every tile
+       press over there re-prices the ledger down here, and runDisassembly()
+       separates the diagram above. -->
+  <div class="grid lg:grid-cols-12 gap-6 items-start">
+
+    <!-- ══ LEFT: exploded hardware + pricing ══ -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- Exploded hardware stage -->
+      <div class="bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm">
+        <div class="flex items-start justify-between flex-wrap gap-2 mb-3">
+          <div class="min-w-0">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Exploded Hardware Stage</span>
+            <p class="text-xs text-slate-400">Screen, board, battery, cameras, coil, screws &amp; housing</p>
+          </div>
+          <span id="dis-badge" class="shrink-0 whitespace-nowrap text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">Ready to Analyze</span>
+        </div>
+
+        <div id="disassembly-stage-container" class="viewport-3d p-3 sm:p-5 min-h-[400px] sm:min-h-[620px] flex flex-col justify-center relative">
+
+          <!-- WebGL teardown. Hidden until initTeardown3D() has a renderer and a
+               built scene; the SVG below is what shows if it never does. Labels
+               are HTML so the figures stay crisp and count up like everywhere
+               else — the render loop just projects each part's anchor to
+               screen space and moves them. -->
+          <div id="teardown-3d" class="teardown-3d hidden">
+            <canvas id="teardown-canvas" aria-label="Interactive 3D teardown — drag to rotate" role="img"></canvas>
+            <div id="teardown-labels" class="teardown-labels"></div>
+            <span class="teardown-hint-drag"><i class="fa-solid fa-arrows-rotate"></i> Drag to rotate</span>
+          </div>
+
+          <!-- The device itself. Every part is drawn at its exploded position;
+               --ay is how far it has to travel back to sit inside the assembled
+               phone, so the default state is a whole device and .exploded is
+               the teardown. --i staggers the separation, top part first. -->
+          <div id="phone-shell">
+          <svg id="phone-explode" viewBox="0 0 560 780" class="w-full h-auto block"
+               role="img" aria-label="Exploded view of the phone showing display, logic board, battery, cameras, wireless coil, screws and housing with each part's resale value">
+            <defs>
+              <linearGradient id="pxGlass" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#1D2E28"/><stop offset="48%" stop-color="#0A100F"/><stop offset="100%" stop-color="#121C19"/>
+              </linearGradient>
+              <linearGradient id="pxSheen" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#F8D794" stop-opacity=".18"/><stop offset="60%" stop-color="#F8D794" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="pxBoard" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1F3327"/><stop offset="100%" stop-color="#12201A"/>
+              </linearGradient>
+              <linearGradient id="pxCell" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1B2621"/><stop offset="100%" stop-color="#0D1512"/>
+              </linearGradient>
+              <radialGradient id="pxLens" cx="35%" cy="30%">
+                <stop offset="0%" stop-color="#4A6C7C"/><stop offset="55%" stop-color="#0B1412"/><stop offset="100%" stop-color="#050908"/>
+              </radialGradient>
+            </defs>
+
+            <!-- ══ 7. Back housing & frame (painted first, so it reads as the
+                 shell the assembled phone sits in) ══ -->
+            <g class="ex-layer" style="--ay:-333px;--i:6">
+              <rect x="36" y="640" width="308" height="136" rx="21" fill="#131D19" stroke="#4C5D54" stroke-width="2"/>
+              <rect x="45" y="649" width="290" height="118" rx="15" fill="#0B120F"/>
+              <!-- rear camera bump -->
+              <rect x="58" y="659" width="70" height="54" rx="17" fill="#0A100E" stroke="#5D6E64"/>
+              <circle cx="78" cy="677" r="10" fill="#0A100E" stroke="#4C5D54"/>
+              <circle cx="108" cy="677" r="10" fill="#0A100E" stroke="#4C5D54"/>
+              <circle cx="93" cy="700" r="9" fill="#0A100E" stroke="#4C5D54"/>
+              <!-- antenna bands + logo emboss -->
+              <path d="M110 640v10M110 766v10M270 640v10M270 766v10" stroke="#7C8D82" stroke-width="3"/>
+              <circle cx="235" cy="708" r="17" fill="none" stroke="#3E4E46" stroke-width="2"/>
+              <path d="M300 668h26M300 748h26" stroke="#3E4E46" stroke-width="2" opacity=".7"/>
+              <line class="ex-lead" x1="346" y1="708" x2="360" y2="708"/>
+              <g class="ex-label">
+                <text class="ex-name" x="366" y="702">CHASSIS &amp; FRAME</text>
+                <text class="ex-price" x="366" y="722" id="ex-chassis">₹0</text>
+              </g>
+            </g>
+
+            <!-- ══ 6. Wireless charging coil ══ -->
+            <g class="ex-layer" style="--ay:-226px;--i:5">
+              <circle cx="190" cy="601" r="29" fill="none" stroke="#B86830" stroke-width="2.5" opacity=".9"/>
+              <circle cx="190" cy="601" r="23" fill="none" stroke="#B86830" stroke-width="2.5" opacity=".8"/>
+              <circle cx="190" cy="601" r="17" fill="none" stroke="#B86830" stroke-width="2.5" opacity=".7"/>
+              <circle cx="190" cy="601" r="11" fill="none" stroke="#B86830" stroke-width="2.5" opacity=".6"/>
+              <path d="M215 590c22-6 34 4 46 2" stroke="#B86830" stroke-width="2.5" fill="none"/>
+              <rect x="258" y="584" width="22" height="10" rx="2" fill="#B79B62"/>
+              <!-- NFC antenna ribbon -->
+              <path d="M96 601H60a8 8 0 00-8 8v14" stroke="#7C8D82" stroke-width="2" fill="none" opacity=".8"/>
+              <rect x="98" y="594" width="30" height="14" rx="3" fill="#243029" stroke="#7C8D82"/>
+              <g class="ex-label">
+                <text class="ex-name ex-name-mute" x="366" y="606">WIRELESS COIL &amp; NFC</text>
+              </g>
+            </g>
+
+            <!-- ══ 5. Cameras, taptic engine & speaker ══ -->
+            <g class="ex-layer" style="--ay:-145px;--i:4">
+              <!-- camera module -->
+              <rect x="52" y="480" width="98" height="80" rx="19" fill="#0F1815" stroke="#4C5D54" stroke-width="2"/>
+              <circle cx="81" cy="507" r="18" fill="#26332D" stroke="#5D6E64"/>
+              <circle cx="81" cy="507" r="12" fill="url(#pxLens)"/>
+              <circle cx="76" cy="502" r="3" fill="#CFE3EC" opacity=".75"/>
+              <circle cx="81" cy="537" r="18" fill="#26332D" stroke="#5D6E64"/>
+              <circle cx="81" cy="537" r="12" fill="url(#pxLens)"/>
+              <circle cx="76" cy="532" r="3" fill="#CFE3EC" opacity=".75"/>
+              <circle cx="123" cy="513" r="8" fill="#F8D794"/>
+              <rect x="115" y="532" width="16" height="16" rx="4" fill="#243029" stroke="#5D6E64"/>
+              <!-- taptic engine -->
+              <rect x="170" y="496" width="88" height="48" rx="9" fill="#1A241F" stroke="#4C5D54" stroke-width="2"/>
+              <rect x="180" y="506" width="60" height="28" rx="4" fill="#0F1815" stroke="#3E4E46"/>
+              <path d="M188 512v16M198 512v16M208 512v16M218 512v16M228 512v16" stroke="#7C8D82" stroke-width="1.5" opacity=".8"/>
+              <rect x="256" y="512" width="14" height="16" rx="2" fill="#B79B62"/>
+              <!-- loudspeaker -->
+              <rect x="276" y="494" width="62" height="52" rx="9" fill="#161F1B" stroke="#4C5D54" stroke-width="2"/>
+              <circle cx="292" cy="508" r="2.5" fill="#7C8D82"/><circle cx="304" cy="508" r="2.5" fill="#7C8D82"/><circle cx="316" cy="508" r="2.5" fill="#7C8D82"/><circle cx="328" cy="508" r="2.5" fill="#7C8D82"/>
+              <circle cx="292" cy="520" r="2.5" fill="#7C8D82"/><circle cx="304" cy="520" r="2.5" fill="#7C8D82"/><circle cx="316" cy="520" r="2.5" fill="#7C8D82"/><circle cx="328" cy="520" r="2.5" fill="#7C8D82"/>
+              <circle cx="292" cy="532" r="2.5" fill="#7C8D82"/><circle cx="304" cy="532" r="2.5" fill="#7C8D82"/><circle cx="316" cy="532" r="2.5" fill="#7C8D82"/><circle cx="328" cy="532" r="2.5" fill="#7C8D82"/>
+              <line class="ex-lead" x1="346" y1="520" x2="360" y2="520"/>
+              <g class="ex-label">
+                <text class="ex-name" x="366" y="514">CAMERA MODULE</text>
+                <text class="ex-price" x="366" y="534" id="ex-camera">₹0</text>
+              </g>
+            </g>
+
+            <!-- ══ 4. Battery ══ -->
+            <g class="ex-layer" style="--ay:-31px;--i:3">
+              <rect x="52" y="344" width="250" height="124" rx="12" fill="url(#pxCell)" stroke="#4C5D54" stroke-width="2"/>
+              <rect x="60" y="352" width="234" height="108" rx="8" fill="none" stroke="#2C3A33"/>
+              <path d="M177 344v124" stroke="#2C3A33" stroke-width="2"/>
+              <rect x="70" y="368" width="88" height="7" rx="3.5" fill="#3A4A43"/>
+              <rect x="70" y="382" width="60" height="6" rx="3" fill="#2C3A33"/>
+              <rect x="70" y="428" width="74" height="6" rx="3" fill="#2C3A33"/>
+              <text class="ex-chip-txt" x="196" y="396">Li-ion</text>
+              <text class="ex-chip-txt" x="196" y="412">3.83 V</text>
+              <!-- battery flex + connector -->
+              <path d="M302 392h20a6 6 0 016 6v10" stroke="#B79B62" stroke-width="3" fill="none"/>
+              <rect x="316" y="408" width="24" height="14" rx="3" fill="#B79B62"/>
+              <rect x="320" y="411" width="4" height="8" rx="1" fill="#0D1512"/>
+              <rect x="328" y="411" width="4" height="8" rx="1" fill="#0D1512"/>
+              <line class="ex-lead" x1="346" y1="406" x2="360" y2="406"/>
+              <g class="ex-label">
+                <text class="ex-name" x="366" y="400">BATTERY CELL</text>
+                <text class="ex-price" x="366" y="420" id="ex-battery">₹0</text>
+              </g>
+            </g>
+
+            <!-- ══ 3. Logic board (two-board sandwich) ══ -->
+            <g class="ex-layer" style="--ay:103px;--i:2">
+              <!-- upper board -->
+              <rect x="40" y="212" width="300" height="52" rx="8" fill="url(#pxBoard)" stroke="#B79B62" stroke-width="1.5"/>
+              <rect x="56" y="222" width="46" height="32" rx="4" fill="#0C1411" stroke="#CFB98C"/>
+              <text class="ex-chip-txt" x="63" y="242">SoC</text>
+              <rect x="112" y="224" width="34" height="28" rx="4" fill="#0C1411" stroke="#CFB98C"/>
+              <text class="ex-chip-txt ex-chip-sm" x="117" y="242">NAND</text>
+              <rect x="156" y="226" width="24" height="24" rx="3" fill="#0C1411" stroke="#8D7A4E"/>
+              <rect x="188" y="228" width="18" height="20" rx="3" fill="#0C1411" stroke="#8D7A4E"/>
+              <path d="M216 222h108M216 232h84M216 242h108M216 252h72" stroke="#B79B62" stroke-width="1.5" opacity=".55"/>
+              <rect x="312" y="222" width="20" height="32" rx="3" fill="#B79B62"/>
+              <!-- lower board -->
+              <rect x="40" y="272" width="300" height="52" rx="8" fill="url(#pxBoard)" stroke="#B79B62" stroke-width="1.5"/>
+              <rect x="58" y="282" width="40" height="32" rx="4" fill="#0C1411" stroke="#CFB98C"/>
+              <text class="ex-chip-txt ex-chip-sm" x="62" y="302">RF</text>
+              <rect x="108" y="284" width="52" height="28" rx="4" fill="#0C1411" stroke="#8D7A4E"/>
+              <rect x="170" y="286" width="26" height="24" rx="3" fill="#0C1411" stroke="#8D7A4E"/>
+              <path d="M206 282h100M206 292h68M206 302h100M206 312h56" stroke="#B79B62" stroke-width="1.5" opacity=".55"/>
+              <rect x="314" y="284" width="18" height="28" rx="3" fill="#B79B62"/>
+              <!-- board-to-board connector -->
+              <rect x="176" y="264" width="34" height="8" rx="2" fill="#CFB98C"/>
+              <line class="ex-lead" x1="346" y1="268" x2="360" y2="268"/>
+              <g class="ex-label">
+                <text class="ex-name" x="366" y="262">LOGIC BOARD</text>
+                <text class="ex-price" x="366" y="282" id="ex-logic">₹0</text>
+              </g>
+            </g>
+
+            <!-- ══ 2. Screws, brackets & shields ══ -->
+            <g class="ex-layer" style="--ay:202px;--i:1">
+              <rect x="40" y="146" width="300" height="54" rx="14" fill="none" stroke="#5D6E64" stroke-width="2" stroke-dasharray="10 7"/>
+              <!-- pentalobe / tri-point screws -->
+              <g class="ex-screw">
+                <circle cx="68" cy="160" r="6"/><circle cx="68" cy="186" r="6"/>
+                <circle cx="190" cy="152" r="6"/><circle cx="190" cy="194" r="6"/>
+                <circle cx="312" cy="160" r="6"/><circle cx="312" cy="186" r="6"/>
+              </g>
+              <path d="M64 160h8M68 156v8M186 152h8M190 148v8M308 160h8M312 156v8M64 186h8M68 182v8M186 194h8M190 190v8M308 186h8M312 182v8"
+                    stroke="#2A2213" stroke-width="1.6"/>
+              <!-- shield cans & brackets -->
+              <rect x="96" y="156" width="64" height="34" rx="5" fill="#243029" stroke="#7C8D82" stroke-width="1.5"/>
+              <path d="M104 164h48M104 172h32M104 180h48" stroke="#7C8D82" stroke-width="1.2" opacity=".6"/>
+              <rect x="222" y="158" width="62" height="30" rx="5" fill="#243029" stroke="#7C8D82" stroke-width="1.5"/>
+              <path d="M232 166h42M232 180h26" stroke="#7C8D82" stroke-width="1.2" opacity=".6"/>
+              <g class="ex-label">
+                <text class="ex-name ex-name-mute" x="366" y="177">SCREWS &amp; SHIELDS</text>
+              </g>
+            </g>
+
+            <!-- ══ 1. Display assembly (painted last: the face of the phone) ══ -->
+            <g class="ex-layer" style="--ay:305px;--i:0">
+              <rect x="40" y="6" width="300" height="128" rx="19" fill="url(#pxGlass)" stroke="#5D6E64" stroke-width="2"/>
+              <rect x="48" y="14" width="284" height="112" rx="14" fill="#080D0C"/>
+              <path d="M48 14h96l-46 112H48z" fill="url(#pxSheen)"/>
+              <!-- earpiece + front camera on the short edge -->
+              <rect x="58" y="58" width="6" height="26" rx="3" fill="#26332D"/>
+              <circle cx="61" cy="94" r="4" fill="#26332D"/>
+              <!-- OLED flex tail folding under the panel -->
+              <path d="M250 134v10a6 6 0 006 6h34" stroke="#B79B62" stroke-width="3" fill="none"/>
+              <rect x="286" y="142" width="30" height="14" rx="3" fill="#B79B62"/>
+              <line class="ex-lead" x1="346" y1="70" x2="360" y2="70"/>
+              <g class="ex-label">
+                <text class="ex-name" x="366" y="64">DISPLAY PANEL</text>
+                <text class="ex-price" x="366" y="84" id="ex-display">₹0</text>
+              </g>
+            </g>
+          </svg>
+          </div>
+
+          <p id="explode-hint" class="text-center text-xs text-slate-500 mt-2">
+            Grade the components, then run the teardown to separate and price every part.
+          </p>
+        </div>
+      </div>
+
+      <!-- ══ Pricing window ══ -->
+      <div class="grade-panel p-4 sm:p-6 rounded-3xl">
+        <div class="flex flex-col sm:flex-row items-start sm:justify-between gap-4">
+          <div class="min-w-0 w-full sm:w-auto">
+            <span class="text-[10px] font-black uppercase tracking-[0.14em] text-khaki-300">Net seller payout</span>
+            <p class="text-4xl sm:text-5xl font-black text-white mt-1 leading-none" id="grade-value">₹0</p>
+            <p class="text-xs text-slate-300 mt-2 truncate" id="grade-value-sub">Select a phone to price it</p>
+            <p class="text-[11px] text-slate-400 mt-0.5" id="bom-age-label">Click "Check &amp; Disassemble Phone" to calculate</p>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="relative w-16 h-16">
+              <svg viewBox="0 0 64 64" class="w-16 h-16 -rotate-90">
+                <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="5"></circle>
+                <circle id="grade-ring" cx="32" cy="32" r="26" fill="none" stroke="#F8D794" stroke-width="5"
+                        stroke-linecap="round" stroke-dasharray="163.4 163.4"
+                        style="transition:stroke-dasharray .5s cubic-bezier(.34,1.56,.64,1),stroke .3s"></circle>
+              </svg>
+              <span class="absolute inset-0 flex items-center justify-center text-sm font-black text-white" id="grade-score">100</span>
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Grade</p>
+              <p class="text-lg font-black text-khaki-300 leading-tight" id="grade-band">Mint</p>
+              <p class="text-[10px] text-slate-400" id="grade-age-chip">36 months old</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="h-px bg-white/10 my-5"></div>
+
+        <div id="bom-rows" class="space-y-2.5"></div>
+
+        <div class="mt-4 pt-4 border-t border-white/10 space-y-1">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-slate-300">Mint payout for this model</span>
+            <span class="font-black text-white" id="grade-mint">₹0</span>
+          </div>
+          <div id="grade-deducts"></div>
+        </div>
+
+        <div class="mt-4 p-3 rounded-xl bg-white/5 border border-khaki-400/25 flex items-center justify-between text-xs">
+          <span class="flex items-center gap-2 font-semibold text-khaki-200"><i class="fa-solid fa-leaf"></i>Greener India Campaign Pledge</span>
+          <span class="font-black text-khaki-300">₹5.00 Included</span>
+        </div>
+
+        <div class="mt-5 space-y-2">
+          <button onclick="runDisassembly()" class="w-full py-3.5 rounded-xl bg-khaki-300 hover:bg-khaki-400 text-[#111A19] font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-screwdriver-wrench"></i> Run teardown &amp; lock quote
+          </button>
+          <button onclick="openModal('pickup-modal')" class="w-full py-3.5 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-calendar-check"></i> Accept Quote &amp; Schedule Pickup
+          </button>
+          <button onclick="askAdvisorAboutCurrentModel()" class="w-full py-3 rounded-xl border border-white/15 hover:bg-white/5 text-slate-200 font-bold text-xs transition-all flex items-center justify-center gap-2">
+            <i class="fa-solid fa-robot text-khaki-300"></i> Ask AI Advisor About This Phone
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ RIGHT: component grading ══ -->
+    <div class="lg:col-span-5 space-y-4">
+      <div class="flex items-baseline justify-between gap-3 px-1">
+        <div>
+          <h3 class="text-2xl text-slate-900">Grade <span class="serif-italic text-[#284139]">each component</span></h3>
+          <p class="text-xs text-slate-500 mt-0.5">Every answer re-prices the teardown instantly.</p>
+        </div>
+        <button onclick="resetGrades()" class="text-xs font-bold text-slate-500 hover:text-[#284139] transition-colors whitespace-nowrap">
+          <i class="fa-solid fa-rotate-left mr-1"></i>Reset
+        </button>
+      </div>
+      <div id="grade-cards" class="space-y-4"></div>
+    </div>
+
+  </div>
+
+
+  <!-- Chart.js Trend Canvas -->
+  <div class="bg-white p-4 sm:p-6 rounded-3xl border border-slate-100 shadow-sm">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+      <div>
+        <h4 class="font-bold text-slate-900">Market Volatility &amp; Component Pricing History (Weekly Spot Rates)</h4>
+        <p class="text-xs text-slate-400">Shows real secondary market fluctuations and pre-launch dips across 12 tracking intervals</p>
+      </div>
+      <div class="flex gap-2 flex-wrap" id="trend-chips">
+        <button onclick="filterChart('all')" class="brand-pill active text-[11px]">All Parts</button>
+        <button onclick="filterChart(0)" class="brand-pill text-[11px]">Display</button>
+        <button onclick="filterChart(1)" class="brand-pill text-[11px]">Logic Board</button>
+        <button onclick="filterChart(2)" class="brand-pill text-[11px]">Camera</button>
+        <button onclick="filterChart(3)" class="brand-pill text-[11px]">Battery</button>
+      </div>
+    </div>
+    <div class="h-64"><canvas id="trend-chart"></canvas></div>
+  </div>
+
+</div>
+
+<!-- ─────────────────────────── 3. REFURBISHED STOREFRONT ─────────────────────── -->
+<div id="view-shop" class="view space-y-6">
+
+  <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <span class="text-xs font-bold text-[#A85B28] uppercase tracking-wider">Certified Hardware Store</span>
+      <h2 class="text-3xl text-slate-900">ReSell <span class="ul-draw serif-italic text-[#284139]">Marketplace</span></h2>
+      <p class="text-sm text-slate-500">Every unit certified with 1-Year Guaranteed Warranty · ₹5 Greener India Pledge</p>
+    </div>
+    <div class="inline-flex p-1.5 rounded-2xl bg-slate-100 border border-slate-200">
+      <button id="st-tab-dev" onclick="storeTab('dev')" class="px-5 py-2.5 rounded-xl font-bold text-xs bg-[#284139] text-white shadow-sm"><i class="fa-solid fa-mobile-screen mr-1.5"></i>BUY DEVICES</button>
+      <button id="st-tab-parts" onclick="storeTab('parts')" class="px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-slate-900"><i class="fa-solid fa-microchip mr-1.5"></i>BUY OEM PARTS</button>
+    </div>
+  </div>
+
+  <!-- Storefront Search with AI Vision -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center">
+    <div class="relative flex-1 w-full">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+      <input id="store-search-inp" autocomplete="off" name="store_search_term" onkeyup="applyStoreSearch()" type="search" placeholder="Search by model, series, or natural language (e.g. 'iPhone 15', 'cheap phone under 15k', 'Samsung OLED')..." class="w-full pl-10 pr-28 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#284139] bg-slate-50 focus:bg-white transition-all"/>
+      <button onclick="triggerComputerVisionScan()" class="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-emerald-50 text-[#A85B28] border border-khaki-200 text-xs font-bold hover:bg-emerald-100 flex items-center gap-1.5 shadow-sm">
+        <i class="fa-solid fa-camera"></i>
+        <span>AI Vision</span>
+      </button>
+    </div>
+
+    <div class="flex gap-2 w-full sm:w-auto">
+      <select id="store-series-sort" onchange="applyStoreSearch()" class="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none">
+        <option value="all">All Series</option>
+        <option value="flagship">Flagship Series</option>
+        <option value="midrange">Mid-Range Series</option>
+        <option value="vintage">10–15 Year Legacy (2011–2016)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Brand Filter Pills -->
+  <div class="flex gap-2 overflow-x-auto pb-1">
+    <button onclick="setShopBrand('all')" class="brand-pill active" data-sb="all">All Brands</button>
+    <button onclick="setShopBrand('apple')" class="brand-pill" data-sb="apple">Apple iPhone</button>
+    <button onclick="setShopBrand('samsung')" class="brand-pill" data-sb="samsung">Samsung Galaxy</button>
+    <button onclick="setShopBrand('google')" class="brand-pill" data-sb="google">Google Pixel</button>
+    <button onclick="setShopBrand('oneplus')" class="brand-pill" data-sb="oneplus">OnePlus</button>
+    <button onclick="setShopBrand('realme')" class="brand-pill" data-sb="realme">Realme</button>
+    <button onclick="setShopBrand('xiaomi')" class="brand-pill" data-sb="xiaomi">Xiaomi / Redmi</button>
+    <button onclick="setShopBrand('oppo')" class="brand-pill" data-sb="oppo">Oppo</button>
+    <button onclick="setShopBrand('vivo')" class="brand-pill" data-sb="vivo">Vivo / iQOO</button>
+    <button onclick="setShopBrand('motorola')" class="brand-pill" data-sb="motorola">Motorola</button>
+  </div>
+
+  <!-- Products Grid -->
+  <div id="shop-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+
+</div>
+
+<!-- ─────────────────────────── 4. UNIVERSAL AI MARKET ADVISOR ────────────────────────── -->
+<div id="view-advisor" class="view">
+  <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col" style="height:700px">
+    <div class="p-5 bg-[#284139] text-white flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-khaki-400 border border-white/10 text-lg">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-sm flex items-center gap-2">
+            ReSell AI Market Advisor
+            <span class="w-2 h-2 rounded-full bg-khaki-400 animate-pulse"></span>
+          </h3>
+          <p class="text-xs text-slate-300">Universal market intelligence trained across all smartphone brands and release cycles</p>
+        </div>
+      </div>
+      <button onclick="resetChat()" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-white/10">Clear Chat</button>
+    </div>
+
+    <div id="chat-log" class="flex-1 p-5 overflow-y-auto space-y-3.5 bg-slate-50/50">
+      <div class="flex items-start gap-2.5 max-w-xl">
+        <div class="w-8 h-8 rounded-full bg-[#284139] text-white flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="bubble-bot p-4 text-xs sm:text-sm text-slate-800 rounded-2xl rounded-tl-none shadow-sm">
+          <p class="font-bold text-slate-900 mb-1">Hello! I am your Universal ReSell Market Advisor.</p>
+          <p>I analyze real-time market data across <strong>Apple, Samsung, Google, OnePlus, Xiaomi, Realme, Oppo, Vivo, Motorola, and Nothing</strong>. Ask me about any specific phone's optimal 14-day selling window, successor launch depreciation, or component demand.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-3 bg-white border-t border-slate-100 flex gap-2 overflow-x-auto">
+      <button onclick="quickChat('When should I sell my Realme Narzo 60?')" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap">
+        Realme Narzo 60 forecast?
+      </button>
+      <button onclick="quickChat('Best time to sell iPhone 15 Pro?')" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap">
+        iPhone 15 Pro window?
+      </button>
+      <button onclick="quickChat('Samsung S24 Ultra value dropping?')" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap">
+        Galaxy S24 Ultra analysis?
+      </button>
+      <button onclick="quickChat('Pixel 8 Pro depreciation curve?')" class="text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap">
+        Pixel 8 Pro timing?
+      </button>
+    </div>
+
+    <div class="p-4 bg-white border-t border-slate-200 flex gap-2">
+      <input id="chat-inp" onkeydown="if(event.key==='Enter')sendChat()" type="text" placeholder="Type any smartphone model (e.g., Realme Narzo 60, Galaxy S23, iPhone 14, Pixel 7)..." class="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#284139]"/>
+      <button onclick="sendChat()" class="px-5 py-3 rounded-xl bg-[#284139] hover:bg-[#1E3129] text-white font-bold text-xs sm:text-sm">
+        <i class="fa-solid fa-paper-plane mr-1"></i> Send
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────── 5. USER PROFILE & FIREBASE ACCOUNT ───────────────────────────────── -->
+<div id="view-profile" class="view space-y-6">
+
+  <!-- Header Card -->
+  <div class="rounded-3xl p-6 sm:p-8 text-white shadow-lg" style="background:linear-gradient(135deg,#111A19 0%,#284139 45%,#284139 100%)">
+    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+      <!-- Avatar with Upload -->
+      <div class="relative">
+        <div id="prof-avatar-wrap" class="w-24 h-24 rounded-full border-4 border-white/30 bg-slate-900 flex items-center justify-center text-4xl shadow-xl overflow-hidden cursor-pointer" onclick="document.getElementById('avatar-file').click()">
+          <i class="fa-solid fa-user-tie text-white/80" id="prof-avatar-icon"></i>
+          <img id="prof-avatar-img" src="" alt="" class="hidden w-full h-full object-cover"/>
+        </div>
+        <input type="file" id="avatar-file" accept="image/*" class="hidden" onchange="previewAvatar(event)"/>
+        <div class="absolute bottom-1 right-1 w-7 h-7 rounded-full bg-white/20 border-2 border-white flex items-center justify-center cursor-pointer" onclick="document.getElementById('avatar-file').click()">
+          <i class="fa-solid fa-camera text-white text-[10px]"></i>
+        </div>
+      </div>
+      
+      <div class="text-center sm:text-left flex-1">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+          <h2 class="text-3xl sm:text-4xl" id="prof-name">Guest User</h2>
+          <span class="inline-block px-3 py-0.5 rounded-full bg-white/20 border border-white/25 text-xs font-bold text-emerald-100" id="prof-status-badge">Guest Account</span>
+        </div>
+        <p class="text-white/80 text-sm font-medium mb-3" id="prof-email">Sign in with Google to sync active quotations, orders, and addresses.</p>
+        <div class="flex flex-wrap gap-2 justify-center sm:justify-start text-xs">
+          <span class="px-3 py-1 rounded-lg bg-black/20 border border-white/10"><i class="fa-solid fa-location-dot text-khaki-300 mr-1"></i><span id="prof-city">Bhatpara, WB</span></span>
+          <span class="px-3 py-1 rounded-lg bg-black/20 border border-white/10"><i class="fa-solid fa-database text-khaki-300 mr-1"></i>Firebase Project: resell-123</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button onclick="triggerFirebaseGoogleLogin()" class="px-4 py-2.5 rounded-xl bg-white text-slate-800 font-bold text-xs shadow-md hover:bg-slate-100 transition-all flex items-center gap-2">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          <span>Sign in with Google</span>
+        </button>
+        <button id="prof-signout-btn" onclick="triggerFirebaseSignOut()" class="hidden px-3.5 py-2.5 rounded-xl bg-black/20 hover:bg-black/30 border border-white/20 text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 Action Metrics -->
+  <div class="grid md:grid-cols-3 gap-5">
+    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between mb-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+        <span class="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md" id="active-q-count">0 Active</span>
+      </div>
+      <h4 class="font-bold text-slate-900 text-sm">Active Quotations</h4>
+      <p class="text-xs text-slate-400 mt-0.5 mb-3">Price-locked quotes pending pickup</p>
+      <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+        <span class="text-xs font-black text-[#284139]" id="seller-quotes-total-txt">Total ₹0</span>
+        <button onclick="nav('quote')" class="text-xs font-bold text-[#A85B28] hover:underline">Value Device →</button>
+      </div>
+    </div>
+    
+    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between mb-3">
+        <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="fa-solid fa-box-open"></i></div>
+        <span class="text-xs font-bold bg-teal-100 text-teal-700 px-2 py-0.5 rounded-md" id="orders-count">0 Orders</span>
+      </div>
+      <h4 class="font-bold text-slate-900 text-sm">My Orders</h4>
+      <p class="text-xs text-slate-400 mt-0.5 mb-3">1-Year Warranty active on all items</p>
+      <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+        <span class="text-xs font-semibold text-slate-600" id="last-order-txt">No Orders Yet</span>
+        <button onclick="nav('shop')" class="text-xs font-bold text-teal-700 hover:underline">Store →</button>
+      </div>
+    </div>
+    
+    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between mb-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#A85B28] flex items-center justify-center"><i class="fa-solid fa-leaf"></i></div>
+        <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md" id="user-points-badge">0 Pts</span>
+      </div>
+      <h4 class="font-bold text-slate-900 text-sm">Greener India Impact</h4>
+      <p class="text-xs text-slate-400 mt-0.5 mb-3">₹5.00 contributed per transaction</p>
+      <div class="pt-2 border-t border-slate-100 flex justify-between items-center">
+        <span class="text-xs text-slate-500">CO₂ Offset: 0.0 kg</span>
+        <span class="text-xs font-bold text-emerald-700">Active Member</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pickup & Hub (moved here from the old top micro bar) -->
+  <div class="grid md:grid-cols-2 gap-5">
+    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center"><i class="fa-solid fa-truck-fast"></i></div>
+        <span class="text-xs font-bold bg-teal-100 text-teal-700 px-2 py-0.5 rounded-md" id="pickup-status-badge">No Pickup Scheduled</span>
+      </div>
+      <h4 class="font-bold text-slate-900 text-sm">Track Pickup</h4>
+      <p class="text-xs text-slate-400 mt-0.5 mb-3">Free doorstep collection, 15-minute inspection, instant UPI transfer</p>
+      <div class="mt-auto pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+        <span class="text-xs font-semibold text-slate-600" id="pickup-next-txt">Lock a quote to book a slot</span>
+        <button onclick="openModal('pickup-modal')" class="text-xs font-bold text-[#A85B28] hover:underline whitespace-nowrap">Schedule →</button>
+      </div>
+    </div>
+
+    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#A85B28] flex items-center justify-center"><i class="fa-solid fa-location-dot"></i></div>
+        <span class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md">10 AM – 9 PM</span>
+      </div>
+      <h4 class="font-bold text-slate-900 text-sm">Nearest Certified Hub</h4>
+      <p class="text-xs text-slate-400 mt-0.5 mb-3">Walk in for an on-the-spot teardown and payout</p>
+      <div class="mt-auto pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+        <span class="text-xs font-black text-[#284139]" id="loc-label">Bhatpara / Kolkata Hub</span>
+        <button onclick="openModal('loc-modal')" class="text-xs font-bold text-[#A85B28] hover:underline whitespace-nowrap">Change →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Persona Switcher -->
+  <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+      <div>
+        <h3 class="font-bold text-slate-900">Dashboard Persona Mode</h3>
+        <p class="text-xs text-slate-400">Toggle between device liquidation management and purchased hardware tracking</p>
+      </div>
+      <div class="mode-pill">
+        <button id="mode-seller" onclick="setMode('seller')" class="active"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>SELLER MODE</button>
+        <button id="mode-buyer" onclick="setMode('buyer')"><i class="fa-solid fa-bag-shopping mr-1"></i>BUYER MODE</button>
+      </div>
+    </div>
+
+    <!-- SELLER MODE -->
+    <div id="seller-view" class="pt-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Active Device Sale Quotes</h4>
+        <button onclick="nav('quote')" class="text-xs font-bold text-[#A85B28] hover:underline">+ Value Another Device</button>
+      </div>
+      <div id="seller-quotes-list" class="space-y-3"></div>
+    </div>
+
+    <!-- BUYER MODE -->
+    <div id="buyer-view" class="pt-5 space-y-4 hidden">
+      <div class="flex items-center justify-between">
+        <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider">My Purchased Certified Devices</h4>
+        <button onclick="nav('shop')" class="text-xs font-bold text-[#284139] hover:underline">+ Browse More</button>
+      </div>
+      <div id="buyer-orders-list" class="space-y-3"></div>
+
+      <div class="space-y-3 pt-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Saved Addresses</h4>
+          <button onclick="addNewAddressPrompt()" class="text-xs font-bold text-[#A85B28] hover:underline">+ Add Address</button>
+        </div>
+        <div id="address-list" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─────────────────────────── 6. PRODUCT DETAIL VIEW (PDP) ───────────────────────── -->
+<div id="view-pdp" class="view space-y-6">
+  <button onclick="nav('shop')" class="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-[#284139] transition-colors">
+    <i class="fa-solid fa-arrow-left"></i> Back to Storefront
+  </button>
+  <div class="grid lg:grid-cols-2 gap-8">
+    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center min-h-[20rem]">
+      <i id="pdp-icon" class="fa-brands fa-apple text-8xl text-[#284139]"></i>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <span id="pdp-grade" class="inline-block text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 mb-2">Grade A+</span>
+        <h2 id="pdp-title" class="text-2xl font-extrabold text-slate-900">iPhone 13 (128GB)</h2>
+        <p id="pdp-sub" class="text-sm text-slate-500 mt-1">Midnight · Battery 93% · Unlocked · 1-Year Warranty</p>
+      </div>
+      <div class="flex items-baseline gap-3">
+        <span id="pdp-price" class="text-3xl font-black text-[#284139]">₹29,499</span>
+        <span id="pdp-orig" class="text-slate-400 line-through text-sm">₹38,000</span>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-emerald-50 border border-khaki-200 text-xs text-emerald-800 font-bold">
+        <i class="fa-solid fa-shield-halved mr-1 text-[#A85B28]"></i> 1-Year Guaranteed Replacement Warranty Included · ₹5 Greener India Pledge
+      </div>
+      <div class="flex gap-3 pt-4">
+        <button onclick="addToCartFromPDP()" class="flex-1 py-3.5 rounded-xl bg-[#284139] hover:bg-[#1E3129] text-white font-bold text-sm shadow-md transition-all">Add to Cart</button>
+        <button onclick="buyNow()" class="flex-1 py-3.5 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white font-bold text-sm shadow-md transition-all">Buy Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ CHECKOUT VIEW (DEDICATED PAGE) ═══════════════════════════ -->
+<div id="view-checkout" class="view space-y-6">
+  <div class="max-w-xl mx-auto px-4 py-4">
+    <div class="mb-4 flex items-center justify-between">
+      <button type="button" onclick="nav('shop')" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all shadow-sm">
+        <i class="fa-solid fa-arrow-left text-[#284139]"></i> Back to Store
+      </button>
+      <div class="text-right">
+        <span class="text-[10px] font-black uppercase tracking-[.14em] text-[#A85B28]">Secure Checkout</span>
+        <p class="text-xs text-slate-500 font-semibold">100% ReSell Certified &middot; Free 1-Yr Warranty</p>
+      </div>
+    </div>
+
+    <div id="checkout-card" class="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-start justify-between gap-4">
+      <div>
+        <h3 class="font-bold text-slate-900 text-lg">Order Checkout</h3>
+        <p id="wiz-counter" class="text-[10px] font-black uppercase tracking-[.14em] text-slate-400 mt-0.5" style="font-family:var(--font-mono)">Step 1 of 4 &middot; Delivery</p>
+      </div>
+      <div class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+    </div>
+
+    <!-- Progress Rail -->
+    <div class="px-6 pt-5">
+      <div id="wiz-rail" class="wiz-rail" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-label="Checkout progress">
+        <button type="button" class="wiz-node" data-node="1" onclick="checkoutGo(1)"><span class="wiz-dot">1</span><span class="wiz-label">Delivery</span></button>
+        <button type="button" class="wiz-node" data-node="2" onclick="checkoutGo(2)"><span class="wiz-dot">2</span><span class="wiz-label">Payment</span></button>
+        <button type="button" class="wiz-node" data-node="3" onclick="checkoutGo(3)"><span class="wiz-dot">3</span><span class="wiz-label">Review</span></button>
+        <button type="button" class="wiz-node" data-node="4" onclick="checkoutGo(4)"><span class="wiz-dot">4</span><span class="wiz-label">Done</span></button>
+      </div>
+    </div>
+
+    <div class="p-6">
+
+      <!-- 1 · Delivery -->
+      <div class="wiz-step" data-step="1">
+        <div class="space-y-3.5">
+          <div class="grid sm:grid-cols-2 gap-3.5">
+            <div>
+              <label class="wiz-lab" for="wiz-name">Full name</label>
+              <input id="wiz-name" class="wiz-input" type="text" autocomplete="name" placeholder="Ritu Sharma" />
+            </div>
+            <div>
+              <label class="wiz-lab" for="wiz-phone">Phone</label>
+              <input id="wiz-phone" class="wiz-input" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="98765 43210" />
+            </div>
+          </div>
+          <div>
+            <label class="wiz-lab" for="wiz-addr">Address</label>
+            <textarea id="wiz-addr" class="wiz-input" rows="2" autocomplete="street-address" placeholder="Flat / house, street, landmark"></textarea>
+          </div>
+          <div class="grid grid-cols-3 gap-3.5">
+            <div class="col-span-2">
+              <label class="wiz-lab" for="wiz-city">City</label>
+              <input id="wiz-city" class="wiz-input" type="text" autocomplete="address-level2" placeholder="Bhatpara, WB" />
+            </div>
+            <div>
+              <label class="wiz-lab" for="wiz-pin">PIN</label>
+              <input id="wiz-pin" class="wiz-input" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="6" placeholder="743123" />
+            </div>
+          </div>
+          <label class="flex items-start gap-2.5 pt-0.5 cursor-pointer">
+            <input id="wiz-save" type="checkbox" class="mt-0.5 w-4 h-4 accent-[#284139]" checked />
+            <span class="text-[11px] font-semibold text-slate-500 leading-snug">Remember this address on this device for next time.</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2 · Payment -->
+      <div class="wiz-step" data-step="2">
+        <div class="space-y-4">
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" class="pay-pill" data-pay="upi"  onclick="setPayMethod('upi')"><i class="fa-solid fa-mobile-screen-button"></i><span>UPI</span></button>
+            <button type="button" class="pay-pill" data-pay="card" onclick="setPayMethod('card')"><i class="fa-regular fa-credit-card"></i><span>Card</span></button>
+            <button type="button" class="pay-pill" data-pay="cod"  onclick="setPayMethod('cod')"><i class="fa-solid fa-indian-rupee-sign"></i><span>On delivery</span></button>
+          </div>
+
+          <div id="wiz-pay-upi" class="wiz-pay">
+            <label class="wiz-lab" for="wiz-vpa">UPI ID</label>
+            <input id="wiz-vpa" class="wiz-input" type="text" autocomplete="off" placeholder="name@bank" />
+            <p class="text-[11px] text-slate-400 font-semibold mt-2">A collect request opens in your UPI app. Nothing is charged until you approve it.</p>
+          </div>
+
+          <div id="wiz-pay-card" class="wiz-pay space-y-3.5">
+            <div>
+              <label class="wiz-lab" for="wiz-card">Card number</label>
+              <input id="wiz-card" class="wiz-input" type="text" inputmode="numeric" autocomplete="cc-number" maxlength="19" placeholder="4242 4242 4242 4242" oninput="wizFmtCard(this)" />
+            </div>
+            <div class="grid grid-cols-2 gap-3.5">
+              <div>
+                <label class="wiz-lab" for="wiz-exp">Expiry</label>
+                <input id="wiz-exp" class="wiz-input" type="text" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/YY" oninput="wizFmtExp(this)" />
+              </div>
+              <div>
+                <label class="wiz-lab" for="wiz-cvv">CVV</label>
+                <input id="wiz-cvv" class="wiz-input" type="password" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="&bull;&bull;&bull;" />
+              </div>
+            </div>
+          </div>
+
+          <div id="wiz-pay-cod" class="wiz-pay">
+            <p class="text-xs font-semibold text-slate-500 leading-relaxed">Pay the courier by cash or UPI when the device is handed to you. You can refuse it at the door after the 10-minute inspection window and owe nothing.</p>
+          </div>
+
+          <div class="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+            <i class="fa-solid fa-lock text-emerald-700 text-xs"></i>
+            <span class="text-[11px] font-bold text-emerald-900">Prototype checkout &mdash; no card details leave this page or are stored anywhere.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 · Review -->
+      <div class="wiz-step" data-step="3">
+        <div class="space-y-3">
+          <div id="wiz-lines" class="space-y-2"></div>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+              <p class="wiz-lab mb-1">Ships to</p>
+              <p id="wiz-sum-ship" class="text-xs font-semibold text-slate-700 leading-relaxed"></p>
+              <button type="button" onclick="checkoutGo(1)" class="text-[11px] font-black text-[#A85B28] mt-1.5">Edit</button>
+            </div>
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+              <p class="wiz-lab mb-1">Paying with</p>
+              <p id="wiz-sum-pay" class="text-xs font-semibold text-slate-700 leading-relaxed"></p>
+              <button type="button" onclick="checkoutGo(2)" class="text-[11px] font-black text-[#A85B28] mt-1.5">Edit</button>
+            </div>
+          </div>
+          <div class="p-4 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+            <div class="flex justify-between"><span class="text-slate-500">Subtotal</span><span class="font-bold" id="wiz-sub">&#8377;0</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Greener India pledge</span><span class="font-bold" id="wiz-pledge">&#8377;5</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Delivery &amp; 1-Year Warranty</span><span class="font-bold text-emerald-700">FREE</span></div>
+            <div class="flex justify-between text-sm font-extrabold text-[#284139] pt-2 border-t"><span>Total</span><span id="wiz-total">&#8377;5</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 · Done -->
+      <div class="wiz-step" data-step="4">
+        <div class="text-center py-4">
+          <div class="w-16 h-16 rounded-full bg-emerald-50 border-2 border-emerald-600 flex items-center justify-center mx-auto">
+            <i class="fa-solid fa-check text-2xl text-emerald-700"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 mt-4 text-base">Order Placed Successfully</h4>
+          <p class="text-xs text-slate-500 mt-1 leading-relaxed">Reference <span id="wiz-ref" class="font-black text-[#284139]">&mdash;</span><br />A &#8377;5.00 tree donation is confirmed with it.</p>
+          <div class="flex gap-2.5 mt-5">
+            <button type="button" onclick="openModal('track-modal')"
+                    class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors">Track it</button>
+            <button type="button" onclick="nav('profile');setMode('buyer')"
+                    class="flex-1 py-3 rounded-xl bg-[#284139] text-white font-bold text-sm shadow-md hover:bg-[#1E3129] transition-colors">My orders</button>
+          </div>
+        </div>
+      </div>
+
+      <p id="wiz-error" class="hidden text-xs font-bold text-red-600 mt-3.5"><i class="fa-solid fa-circle-exclamation mr-1"></i><span id="wiz-error-msg"></span></p>
+    </div>
+
+    <div id="wiz-actions" class="p-6 border-t border-slate-100 flex gap-3">
+      <button id="wiz-back" type="button" onclick="checkoutBack()"
+              class="px-5 py-3 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors">Back</button>
+      <button id="wiz-next" type="button" onclick="checkoutNext()"
+              class="flex-1 py-3 rounded-xl bg-[#284139] hover:bg-[#1E3129] text-white font-bold text-sm shadow-md transition-colors">Continue &rarr;</button>
+    </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ═══════════════════════════ MODALS ═══════════════════════════ -->
+
+<!-- Modal: AI Computer Vision Scanner -->
+<div id="vision-modal" class="overlay">
+  <div class="modal-box max-w-md p-6 bg-slate-900 text-white text-center space-y-4">
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <span class="text-xs font-bold text-khaki-400 uppercase tracking-widest"><i class="fa-solid fa-camera mr-1"></i> AI Computer Vision Scanner</span>
+      <button onclick="closeModal('vision-modal')" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    
+    <div class="w-full h-56 rounded-2xl bg-slate-950 border-2 border-dashed border-sky-400/50 relative overflow-hidden flex flex-col items-center justify-center">
+      <div class="scan-line"></div>
+      <i class="fa-solid fa-mobile-screen text-5xl text-sky-400 mb-2 animate-bounce"></i>
+      <p class="text-xs font-mono text-sky-300" id="vision-status-txt">Analyzing camera feed / image...</p>
+      <p class="text-[10px] text-slate-500">Detecting model, bezels, and camera layout</p>
+    </div>
+
+    <div class="p-3 bg-slate-800 rounded-xl text-left text-xs space-y-1">
+      <p class="font-bold text-white flex items-center justify-between">
+        <span>Detected: <strong class="text-khaki-400">iPhone 13 (128GB)</strong></span>
+        <span class="text-[10px] bg-khaki-500/20 text-khaki-300 px-2 py-0.5 rounded">98.4% Confidence</span>
+      </p>
+      <p class="text-[10px] text-slate-400">Match found in ReSell Storefront with 1-Year Guarantee.</p>
+    </div>
+
+    <button onclick="applyVisionResult()" class="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs shadow-md transition-all">
+      Filter Storefront by Detected Phone &rarr;
+    </button>
+  </div>
+</div>
+
+<!-- Modal: Formula -->
+<div id="formula-modal" class="overlay">
+  <div class="modal-box max-w-lg">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900">Transparent Component-Level BOM Formula</h3>
+      <button onclick="closeModal('formula-modal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="p-4 rounded-2xl bg-slate-900 text-khaki-400 text-xs sm:text-sm font-mono leading-relaxed shadow-inner">
+        Final Payout = Base Market Value &times; Age Depreciation Factor &times; Condition Multiplier
+      </div>
+      <div class="space-y-2 text-xs text-slate-600">
+        <p class="font-bold text-slate-900">1. Tiered Base Market Value (MSRP):</p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-500 text-[11px]">
+          <li><strong>Flagship Tier:</strong> &#8377;80,000 to &#8377;1,30,000 (iPhone Pro models, Galaxy Ultra)</li>
+          <li><strong>Mid-Range Tier:</strong> &#8377;30,000 to &#8377;50,000 (OnePlus, Pixel, standard Galaxy / Oppo / Vivo)</li>
+          <li><strong>Budget / Legacy Tier:</strong> &#8377;5,000 to &#8377;15,000 (Realme C series, 10-year vintage devices)</li>
+        </ul>
+        <p class="font-bold text-slate-900 pt-2">2. Component-Level Decomposition (Sums to 100% of Final Payout):</p>
+        <div class="grid grid-cols-2 gap-2 text-[11px] font-semibold">
+          <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">Logic Board: <strong>38%</strong></div>
+          <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">Display Panel: <strong>28%</strong></div>
+          <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">Camera Module: <strong>18%</strong></div>
+          <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">Battery Cell: <strong>8%</strong></div>
+          <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 col-span-2">Chassis &amp; Frame: <strong>8%</strong></div>
+        </div>
+        <p class="text-[11px] text-slate-500 pt-1">Total Component Valuation = <strong>100% of Final Payout</strong>. Realistic and tiered, preventing budget phones from ever out-pricing flagships.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pickup Scheduler -->
+<div id="pickup-modal" class="overlay">
+  <div class="modal-box max-w-md">
+    <div class="p-5 bg-[#284139] text-white flex items-center justify-between">
+      <div><h3 class="font-bold">Schedule Free Doorstep Pickup</h3><p class="text-xs text-slate-300">Instant UPI transfer upon doorstep inspection</p></div>
+      <button onclick="closeModal('pickup-modal')" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">✕</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <label class="block text-xs font-bold text-slate-600 uppercase">Select Date</label>
+      <div class="grid grid-cols-3 gap-2" id="pickup-dates">
+        <button onclick="selectPickupDate(this)" class="pickup-date-btn p-2.5 rounded-xl border border-[#284139] bg-teal-50 text-[#284139] font-bold text-xs text-center transition-colors">Tomorrow</button>
+        <button onclick="selectPickupDate(this)" class="pickup-date-btn p-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs text-center transition-colors">Saturday</button>
+        <button onclick="selectPickupDate(this)" class="pickup-date-btn p-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs text-center transition-colors">Sunday</button>
+      </div>
+      <button onclick="confirmPickup()" class="w-full py-3 rounded-xl bg-[#A85B28] hover:bg-[#8A4A20] text-white font-bold text-sm shadow-md mt-2 transition-colors">Confirm Pickup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cart & Payment -->
+<div id="cart-modal" class="overlay">
+  <div class="modal-box max-w-md">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900">Your Cart <span id="cart-count-label" class="text-xs font-bold text-[#A85B28]">(0 items)</span></h3>
+      <button onclick="closeModal('cart-modal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
+    </div>
+    <div id="cart-items" class="p-5 space-y-3 min-h-[8rem] max-h-64 overflow-y-auto">
+      <p class="text-xs text-slate-400 text-center py-8">Your cart is empty.</p>
+    </div>
+    <div class="mx-5 p-3 rounded-xl bg-emerald-50 border border-khaki-200 flex items-center justify-between text-xs">
+      <span class="font-bold text-emerald-900"><i class="fa-solid fa-leaf text-[#A85B28] mr-1"></i> Greener India E-Waste Pledge:</span>
+      <span class="font-black text-emerald-700">+₹5.00</span>
+    </div>
+    <div class="p-5 border-t border-slate-100 space-y-2 text-xs">
+      <div class="flex justify-between"><span class="text-slate-500">Subtotal</span><span class="font-bold" id="cart-sub">₹0</span></div>
+      <div class="flex justify-between"><span class="text-slate-500">1-Year Warranty</span><span class="font-bold text-emerald-700">FREE</span></div>
+      <div class="flex justify-between text-sm font-extrabold text-[#284139] pt-2 border-t"><span>Total</span><span id="cart-total">₹5</span></div>
+      <button onclick="openCheckout()" class="w-full py-3.5 rounded-xl bg-[#284139] text-white font-bold text-sm shadow-md mt-2">Proceed to Checkout &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Order Tracking -->
+<div id="track-modal" class="overlay">
+  <div class="modal-box max-w-md">
+    <div class="p-5 bg-[#284139] text-white flex items-center justify-between">
+      <div><h3 class="font-bold">Hardware Order Tracking</h3><p class="text-xs text-slate-300">Order #RS-94820 · Express Logistics</p></div>
+      <button onclick="closeModal('track-modal')" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">✕</button>
+    </div>
+    <div class="p-6 space-y-4 text-xs">
+      <div class="p-3 bg-emerald-50 rounded-xl border border-khaki-200 text-emerald-800 font-bold">
+        ✓ Shipped — In Transit (Kolkata Central Hub)
+      </div>
+      <p class="text-slate-500">Expected Delivery: Tomorrow by 11:00 AM. 1-Year Warranty active upon delivery.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Location Modal -->
+<div id="loc-modal" class="overlay">
+  <div class="modal-box max-w-md">
+    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-slate-900">Select Nearest Hub</h3>
+      <button onclick="closeModal('loc-modal')" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">✕</button>
+    </div>
+    <div class="p-5 space-y-2">
+      <button onclick="setLoc('Bhatpara Hub, WB','Bhatpara / Kolkata Hub')" class="w-full p-3 rounded-xl border border-[#284139] bg-teal-50 flex items-center justify-between text-xs font-bold"><span>Bhatpara Hub (North 24 PGS)</span><span class="text-[#A85B28]">Active</span></button>
+      <button onclick="setLoc('Kolkata Hub (Salt Lake)','Kolkata / Salt Lake Hub')" class="w-full p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs font-bold hover:bg-slate-50"><span>Kolkata Hub (Salt Lake Sec V)</span><span class="text-slate-400">Available</span></button>
+      <button onclick="setLoc('Mumbai Hub (BKC)','Mumbai / BKC Hub')" class="w-full p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs font-bold hover:bg-slate-50"><span>Mumbai Hub (BKC)</span><span class="text-slate-400">Available</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Scroll progress -->
+<div id="scroll-progress"></div>
+
+<!-- Home section rail (desktop) -->
+<nav id="sec-rail" class="sec-rail on" aria-label="Home sections">
+  <button class="sec-dot active" data-sec="sec-hero" onclick="scrollToSection('sec-hero')"><span class="lbl">Overview</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-worth" onclick="scrollToSection('sec-worth')"><span class="lbl">Breakdown</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-trust" onclick="scrollToSection('sec-trust')"><span class="lbl">Why ReSell</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-impact" onclick="scrollToSection('sec-impact')"><span class="lbl">Impact</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-how" onclick="scrollToSection('sec-how')"><span class="lbl">How it works</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-store" onclick="scrollToSection('sec-store')"><span class="lbl">Store</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-activity" onclick="scrollToSection('sec-activity')"><span class="lbl">Your activity</span><span class="pip"></span></button>
+  <button class="sec-dot" data-sec="sec-contact" onclick="scrollToSection('sec-contact')"><span class="lbl">Contact us</span><span class="pip"></span></button>
+</nav>
+
+<!-- Global Toast -->
+<div id="toast"><span id="toast-msg">Action confirmed</span></div>
+
+<!-- ═══════════════════════════ BOTTOM MOBILE NAVIGATION ═══════════════════════════ -->
+<div id="mobile-nav" class="md:hidden fixed left-3 right-3 z-40 bg-white border border-slate-200/60 rounded-2xl shadow-lg shadow-slate-900/10 flex items-center justify-around px-2 py-1.5" style="bottom:calc(0.75rem + env(safe-area-inset-bottom))">
+  <button onclick="nav('home')" class="mob-nav active flex flex-col items-center gap-0.5" data-p="home"><i class="fa-solid fa-house text-lg"></i><span class="text-[9px] font-bold">Home</span></button>
+  <button onclick="nav('quote')" class="mob-nav flex flex-col items-center gap-0.5" data-p="quote"><i class="fa-solid fa-screwdriver-wrench text-lg"></i><span class="text-[9px] font-bold">Sell</span></button>
+  <button onclick="nav('shop')" class="mob-nav flex flex-col items-center gap-0.5" data-p="shop"><i class="fa-solid fa-store text-lg"></i><span class="text-[9px] font-bold">Store</span></button>
+  <button onclick="nav('advisor')" class="mob-nav flex flex-col items-center gap-0.5" data-p="advisor"><i class="fa-solid fa-robot text-lg"></i><span class="text-[9px] font-bold">Advisor</span></button>
+  <button onclick="nav('profile')" class="mob-nav flex flex-col items-center gap-0.5" data-p="profile"><i class="fa-solid fa-user text-lg"></i><span class="text-[9px] font-bold">Profile</span></button>
+</div>
+
+<!-- ═══════════════════════════ JAVASCRIPT & DATABASE ENGINE ═══════════════════════════ -->
+<!-- The thread. Last in the body on purpose: at z-index -1 it paints above
+     #ambient and above the section canopies (same z-index, later in tree
+     order wins) but below every scrap of content, so it reads as running
+     behind the page. Painted by initGlyphString() in app.js. -->
+<canvas id="glyph-string" aria-hidden="true"></canvas>
+
+<script src="app.js"></script>
+</body>
+</html>
