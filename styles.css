@@ -1,0 +1,1188 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ReSell — Custom stylesheet
+   ───────────────────────────────────────────────────────────────────────────
+   Linked from <head> in index.html:  <link rel="stylesheet" href="styles.css">
+   NOTE the filename is styles.css (plural). Loaded AFTER the Tailwind CDN
+   script so these rules win on equal specificity.
+
+   Tailwind utilities cover most layout/spacing/colour in the markup. This file
+   holds only what utilities cannot express: design tokens, keyframes, and the
+   stateful classes that app.js toggles at runtime.
+
+   ── State classes driven by app.js (renaming these breaks behaviour) ──
+     .view / .view.on ......... page router — every page is display:none until
+                                nav() puts .on on #view-<name>
+     .overlay / .open ......... modal show/hide — openModal()/closeModal()
+     #toast / .show ........... toast slide-in — toast()
+     .nav-link / .mob-nav +
+       .active ................ current-page highlight — nav()
+     .brand-pill.active ....... selected brand chip — setShopBrand()/filterChart()
+     .mode-pill button.active . seller/buyer toggle — setMode()
+     .reveal / .in-view ....... scroll-reveal — IntersectionObserver
+     .sec-rail.on,
+       .sec-dot.active ........ section dot rail — scroll spy
+     .badge-pop ............... cart badge bounce — addToCart()
+     .confetti-bit ............ launchConfetti()
+     .typing-dots ............. advisor "thinking" indicator — appendChatMsg()
+     .scan-line ............... triggerComputerVisionScan()
+
+   Sections below:
+     1. Tokens, reset & base
+     2. View router
+     3. Hero & 3D hardware viewport
+     4. Modals & toast
+     5. Controls: mode pills, brand pills, product cards, chat bubbles
+     6. Keyframes
+     7. Motion: entrances, scroll reveal, progress bar, section rail
+     8. Living hero, gradient text & shine
+     9. Navigation states
+    10. Confetti, reduced motion & vision scan
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Tokens, reset & base ─────────────────────────────────────────────── */
+*{font-family:var(--font-sans);box-sizing:border-box}
+:root{
+  /* Opaque stand-in for the old .glass backdrop blur — the value the
+     blurred stack resolved to over the middle of the canopy. */
+  --glass-dark:#31443C;
+  /* ── Type ──
+     Three roles, deliberately narrow: a display serif for mastheads and
+     figures, a neutral sans for everything you actually read, and a mono for
+     the tracked-out uppercase labels. */
+  --font-display:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --font-sans:'Plus Jakarta Sans',ui-sans-serif,system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+
+  /* ── Source swatches — the five colours the whole UI is built from ── */
+  --emerald:#284139;        /* Emerald Green  – the brand */
+  --wasabi:#809076;         /* Wasabi         – muted, secondary, restful */
+  --khaki:#F8D794;          /* Creased Khaki  – the gilding; only ever on dark */
+  --earth:#B86830;          /* Egyptian Earth – warmth, appetite, the CTA hue */
+  --noir:#111A19;           /* Noir de Vigne  – ink, and the deep grounds */
+
+  /* ── Semantic roles ──
+     Emerald Green carries white at 11.0:1, so it is used at full strength.
+     Egyptian Earth only reaches 4.1:1 — short of AA for the 12px bold sitting
+     on the CTAs — so the interactive role is one shade down at 5.0:1 and the
+     swatch itself is kept for fills, borders and icons. Creased Khaki is a
+     3.4:1 tint: it gilds dark surfaces and is never asked to carry text on
+     the page ground. */
+  --primary:#284139;        /* Emerald Green – brand primary   (11.0:1 on white) */
+  --primary-dk:#1E3129;     /* primary hover / pressed */
+  --accent:#A85B28;         /* Egyptian Earth, shaded – CTA     (5.0:1 on white) */
+  --accent-dk:#8A4A20;      /* accent hover — darkens, so contrast only rises */
+  --gild:#F8D794;           /* Creased Khaki – rules, numerals, marks on dark */
+
+  /* Flat gold reads as bland cream at any size — a single low-chroma yellow
+     has no light in it. Gilding is a *gradient*: a pale band raking across a
+     warmer ground, which is what gives the reference image's metal its life.
+     Anything gold and larger than a hairline uses this, not --gild. */
+  --gild-grad:linear-gradient(115deg,#B0740C 0%,#F3C255 20%,#FEF3D4 42%,#F8D794 56%,#E9A722 76%,#B0740C 100%);
+
+  /* ── Scroll-driven ambience (home) ──
+     app.js lerps these four across the page's eight sections, so the ground
+     warms from green through gold into terracotta and back as you scroll, and
+     every section's own accent follows it. --sec-accent is the saturated hue
+     for rules and marks; --sec-ink is the same hue shaded far enough to carry
+     11px bold text on the ivory ground. Defaults below are the hero's. */
+  --amb-a:rgba(40,65,57,.16);   /* the mid-screen tint, in the section's own hue */
+  --amb-b:#E7EFE7;              /* upper wash */
+  --amb-c:#F7F4EB;              /* lower wash */
+  --sec-accent:#284139;
+  --sec-ink:#284139;
+  --surface:#F7F4EB;        /* app background – warm ivory pulled from the khaki */
+  --ink:#111A19;            /* Noir de Vigne – primary text    (17.9:1 on white) */
+  --bdr:#DEDDD1;            /* hairline – greige, never a cold grey */
+}
+html{scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none}
+html{background:var(--surface)}
+body{background:transparent;color:var(--ink)}
+
+/* Ambient ground. Fixed and behind everything (z-index:-1 paints above the
+   canvas background but below all block content), so scrolling re-reads it
+   rather than re-laying it out. Pure gradients, no blur filter — the softness
+   is in the colour stops, which costs one rasterised layer instead of a
+   per-frame convolution. */
+#ambient{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(72% 52% at 50% 46%, var(--amb-a) 0%, transparent 70%),
+    radial-gradient(70% 55% at 6% 18%, var(--amb-b) 0%, transparent 70%),
+    radial-gradient(75% 60% at 94% 82%, var(--amb-c) 0%, transparent 72%);
+}
+
+/* ── Type roles ──────────────────────────────────────────────────────────
+   Cormorant Garamond runs small and light for its point size, so the display
+   headings are stepped up in the markup and pinned to 600 here — the utility
+   classes ask for `font-black`, a weight the family does not have, and a
+   synthesised 900 smears the thin strokes that make it worth using. Its
+   letterforms already carry the tension `tracking-tight` was adding for the
+   sans, hence the reset to normal.                                        */
+h1,h2,.font-display,.tl-title,.tl-value,.serif-italic{
+  font-family:var(--font-display);
+  letter-spacing:normal;
+  font-weight:600;
+}
+h1,h2{line-height:1.06}
+.serif-italic{font-style:italic;font-weight:600}
+
+/* The small tracked-out uppercase labels — eyebrows, field labels, chips —
+   take the mono. It is the one place the reference palette card's own
+   typography is quoted directly, and it lends the data screens the tone of a
+   spec sheet rather than a dashboard. */
+[class~="uppercase"]{font-family:var(--font-mono)}
+
+/* Figures line up in columns across the value ledgers and the cart. */
+.tl-value,.tabular{font-variant-numeric:tabular-nums}
+button{cursor:pointer;font:inherit}
+select{cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+::-webkit-scrollbar{width:0;height:0;display:none}
+::-webkit-scrollbar-thumb{background:transparent}
+
+.view{display:none;opacity:0;transform:translateY(6px);transition:opacity .28s ease,transform .28s ease}
+.view.on{display:block;opacity:1;transform:translateY(0)}
+
+/* Hero: Noir de Vigne rising through Emerald Green into a bronze corner.
+   The lightened first stop keeps the top edge from meeting the ivory ground
+   at full Noir — the hard slab edge was most of what made it read as pasted
+   on rather than set into the page. */
+#sec-hero,.closing-panel{position:relative}
+
+/* ── The masthead is not a block ──────────────────────────────────────────
+   A dark panel on an ivory page reads as pasted on, and feathering the join
+   does not fix it: the luminance gap is roughly 20:1, so a soft edge turns a
+   hard line into a smudge, and a blurred copy behind it reads as a badly
+   composited shadow. Both were tried here.
+
+   So the panel stops being a panel. The colour goes full-bleed behind the
+   whole section, edge to edge and up past the header, and the masthead
+   content sits directly on it with no background, radius or shadow of its
+   own: there is no edge left to blend, because there is no block. The one
+   boundary left is where the ground ends, and that is cut as an edge rather
+   than dissolved — see below.
+
+   ── The edge ──────────────────────────────────────────────────────────────
+   Nothing is feathered: the ground is at full strength right up to its last
+   row of pixels and the ivory begins on the next one. What keeps that from
+   reading as a slab is the shape of the line rather than its softness — the
+   boundary is straight across the middle and then sweeps back into the two
+   page edges on a concave quarter-circle, so the ivory wraps around the
+   corners of the dark instead of butting into them.
+
+   That inverted corner is cut by a mask built as a union of four layers, and
+   a union is all it is: multiple mask layers composite with `add` by default,
+   so no mask-composite keyword is needed anywhere.
+
+     1. the body above the notch line — full width, height minus one radius
+     2. the middle column — full height, width minus a radius at each end
+     3+4. a disc of radius `--nick` centred on the inside corner of each notch
+
+   The two discs are full circles; three quarters of each already sit inside
+   layers 1 and 2, so only the quarter that fills the corner has any effect.
+   The masks live in custom properties because .canopy-down and .canopy-close
+   differ only in which end the notches are on — the mask image itself is the
+   same four layers for both, and only the position list flips.
+
+   --nick has to be declared HERE, next to the lists that read it, not on the
+   canopies. A custom property's computed value is its own value with its
+   var()s already substituted, so `var(--nick)` inside --nick-size-* resolves
+   against :root — where an earlier version of this had left it undefined.
+   That made the size lists invalid at computed-value time, dropped mask-size
+   back to `auto`, and the four layers then covered the whole box: a union of
+   everything, i.e. the straight edge with no notches at all. */
+
+:root{
+  --nick:56px;
+  --nick-mask:
+    linear-gradient(#000,#000),
+    linear-gradient(#000,#000),
+    radial-gradient(circle closest-side,#000 99.5%,transparent 100%),
+    radial-gradient(circle closest-side,#000 99.5%,transparent 100%);
+  --nick-size-b:
+    100% calc(100% - var(--nick)),
+    calc(100% - var(--nick) * 2) 100%,
+    calc(var(--nick) * 2) calc(var(--nick) * 2),
+    calc(var(--nick) * 2) calc(var(--nick) * 2);
+  --nick-pos-b:left top,center top,left bottom,right bottom;
+  --nick-size-t:
+    100% calc(100% - var(--nick)),
+    calc(100% - var(--nick) * 2) 100%,
+    calc(var(--nick) * 2) calc(var(--nick) * 2),
+    calc(var(--nick) * 2) calc(var(--nick) * 2);
+  --nick-pos-t:left bottom,center bottom,left top,right top;
+}
+.canopy{
+  position:absolute;z-index:-1;pointer-events:none;overflow:hidden;
+  left:50%;width:100vw;transform:translateX(-50%);
+  background:
+    radial-gradient(42% 55% at 78% 14%, rgba(248,215,148,.16), transparent 62%),
+    radial-gradient(46% 62% at 10% 88%, rgba(184,104,48,.24), transparent 64%),
+    linear-gradient(135deg,#1A2A24 0%,#22362D 26%,#284139 54%,#3A5643 74%,#7D5322 100%);
+  background-size:180% 180%;
+  animation:gradPan 18s ease infinite;
+}
+/* Masthead: solid from the top of the page down to its own edge. */
+#sec-hero>.canopy,.closing-panel>.canopy{margin:0}
+/* The masthead ends exactly on its own section's bottom edge. The section
+   below opens with py-12/py-16 of its own, so the next heading clears the
+   line by that much, and everything the hero carries — the campaign banner
+   and the scroll cue included — now sits on ground at full strength instead
+   of on the tail of a fade. */
+.canopy-down{
+  top:-240px;bottom:0;
+  -webkit-mask-image:var(--nick-mask);mask-image:var(--nick-mask);
+  -webkit-mask-size:var(--nick-size-b);mask-size:var(--nick-size-b);
+  -webkit-mask-position:var(--nick-pos-b);mask-position:var(--nick-pos-b);
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+}
+/* The closing panel: the same edge, mirrored. It starts 20px above the CTA
+   section, carries the CTA and the contact form on one uninterrupted ground,
+   and runs off the foot of the document — the 26px it borrows below itself is
+   `main`'s own py-6, which is all there is down there. So only its top edge is
+   a boundary, and only that end takes the notches. */
+.canopy-close{
+  top:-20px;bottom:-26px;
+  -webkit-mask-image:var(--nick-mask);mask-image:var(--nick-mask);
+  -webkit-mask-size:var(--nick-size-t);mask-size:var(--nick-size-t);
+  -webkit-mask-position:var(--nick-pos-t);mask-position:var(--nick-pos-t);
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+}
+
+/* ── The thread ──────────────────────────────────────────────
+   A band a little taller than the viewport, scrolled with the document and
+   re-anchored by initGlyphString() in app.js when scrolling nears its edge.
+   `top` and `height` are set from JS; everything positional here is the part
+   that does not change.
+
+   Absolute, not fixed. A negative z-index *fixed* layer is composited behind
+   the scrolling contents, so the section canopies paint over it and the thread
+   disappears on exactly the dark bands it exists to cross. Scrolled into the
+   document at the same z-index it is simply a later sibling, so it lands above
+   them — and below all content, which is the point. It also means scrolling
+   moves it natively, with no JavaScript in the loop.
+
+   Nothing here animates but the one-shot fade at load: the canvas repaints
+   itself, so the element never asks the compositor for anything per frame. */
+#glyph-string{
+  position:absolute;
+  top:0;left:0;
+  width:100%;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0;
+  animation:threadIn 1.6s ease-out .35s both;
+}
+@keyframes threadIn{from{opacity:0}to{opacity:1}}
+
+/* The canopy half of the ribbon. Appended to each .canopy by app.js so it
+   cannot lose the paint order to the canopy's own background, and so the
+   canopy's mask — hard edge, notched corners — clips it to exactly the ground
+   it belongs to, for free. */
+.glyph-veil{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  pointer-events:none;
+}
+
+/* Gilding. Gold that is a gradient rather than a fill — the pale band drifts
+   slowly across it, which is what stops a large gold surface reading flat. */
+.gilt{
+  background:var(--gild-grad);background-size:220% auto;
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+  animation:gradPan 9s linear infinite;
+}
+.gilt-fill{
+  background:var(--gild-grad);background-size:220% auto;
+  color:#2E1D07;border:0;
+  animation:gradPan 9s linear infinite;
+}
+
+/* Section accents, driven by the ambient. The rule is the saturated hue; the
+   label takes the shaded one so it stays legible when the section is gold. */
+.sec-eyebrow,.sec-tint{color:var(--sec-ink)}
+.sec-rule{background:var(--sec-accent)}
+/* The dividing hairline is gone. It picked up the section's hue and faded out
+   across the measure, which read as a deliberate rule in the middle of the
+   page but as a stray line where it landed hard against the masthead's bottom
+   edge — the one seam where the ground already changes colour and needs no
+   help saying so. The sections are separated by their own py-12/py-16 and by
+   the ambient shift; they do not need a drawn edge as well. */
+
+/* 3D Hardware Canvas */
+.viewport-3d{
+  background:radial-gradient(circle at center,#22352D 0%,#111A19 100%);
+  border-radius:1.5rem;
+  position:relative;
+  overflow:hidden;
+  box-shadow:inset 0 0 40px rgba(0,0,0,0.5),0 15px 35px rgba(17,26,25,0.18);
+}
+/* app.js adds .stage-light once the WebGL teardown is running: that render
+   is lit for a lightbox and reads on the same white as the card around it.
+   The SVG fallback is drawn for the dark ground above, so it keeps it. */
+.viewport-3d.stage-light{
+  background:radial-gradient(circle at 50% 38%,#FFFFFF 0%,#F8F6F0 100%);
+  border:1px solid var(--bdr);
+  box-shadow:inset 0 1px 3px rgba(17,26,25,.04);
+}
+
+.hardware-3d-item{
+  transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1),filter 0.4s ease;
+  filter:drop-shadow(0 12px 20px rgba(0,0,0,0.45));
+}
+.hardware-3d-item:hover{
+  transform:scale(1.04) translateY(-4px);
+  filter:drop-shadow(0 18px 28px rgba(248,215,148,0.45));
+}
+
+/* Modals */
+/* No backdrop-filter. A backdrop blur pulls everything painted behind it
+   onto a separate compositing pass and re-blurs that pass on every frame the
+   ground beneath it moves — and on this page the ground is animating, so
+   that was every frame, full-viewport, for as long as a dialog was open.
+   The scrim is carried by alpha alone and darkened to make up the contrast
+   the blur used to provide. The fade stays: opacity is compositor-only. */
+.overlay{position:fixed;inset:0;z-index:999;background:rgba(17,26,25,.74);display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity .3s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal-box{background:#fff;border-radius:1.5rem;box-shadow:0 25px 60px rgba(0,0,0,.25);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;transform:scale(.95) translateY(15px);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.overlay.open .modal-box{transform:scale(1) translateY(0)}
+
+/* Toast */
+#toast{position:fixed;bottom:5rem;right:1.25rem;z-index:9999;background:#111A19;color:#fff;padding:.75rem 1.25rem;border-radius:.875rem;font-size:.75rem;font-weight:600;transform:translateX(130%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none;max-width:320px;box-shadow:0 10px 25px rgba(0,0,0,0.3)}
+#toast.show{transform:translateX(0)}
+
+/* Mode toggle */
+.mode-pill{display:inline-flex;padding:.25rem;background:#EFEDE4;border-radius:9999px;border:1px solid #DEDDD1}
+.mode-pill button{padding:.5rem 1.25rem;border-radius:9999px;font-size:.75rem;font-weight:700;transition:all .25s;color:#6E756C}
+.mode-pill button.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(40,65,57,.28)}
+
+/* Brand pills */
+.brand-pill{padding:.375rem 1rem;border-radius:9999px;font-size:.7rem;font-weight:700;border:1.5px solid var(--bdr);cursor:pointer;transition:all .2s;background:#fff;color:#6E756C;white-space:nowrap}
+.brand-pill:hover{border-color:var(--primary);color:var(--primary)}
+.brand-pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+.prod-card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(17,26,25,.16)}
+.prod-card{transition:transform .25s,box-shadow .25s}
+
+/* Chat bubbles */
+.bubble-bot{background:#EFEDE4;border-radius:0 1rem 1rem 1rem}
+.bubble-user{background:var(--primary);color:#fff;border-radius:1rem 0 1rem 1rem}
+
+/* ═══════════ MOTION & EYE CANDY ═══════════ */
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes gradPan{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ulDraw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes heroInner{from{opacity:0;transform:translateY(18px);filter:blur(5px)}60%{filter:none}to{opacity:1;transform:translateY(0);filter:none}}
+@keyframes popBadge{0%{transform:scale(1)}40%{transform:scale(1.55)}100%{transform:scale(1)}}
+@keyframes msgIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes typingDot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+@keyframes confettiFall{to{transform:translateY(110vh) rotate(720deg)}}
+@keyframes shineSweep{0%{transform:translateX(-130%) skewX(-18deg)}55%,100%{transform:translateX(260%) skewX(-18deg)}}
+
+/* Springy press feedback on every button */
+button{transition:transform .16s cubic-bezier(.34,1.56,.64,1)}
+button:active{transform:scale(.95)}
+
+/* Staggered content entrance when switching views (scroll-revealed blocks opt out) */
+.view.on>*:not(.reveal){animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both}
+.view.on>*:not(.reveal):nth-child(2){animation-delay:.07s}
+.view.on>*:not(.reveal):nth-child(3){animation-delay:.14s}
+.view.on>*:not(.reveal):nth-child(4){animation-delay:.21s}
+.view.on>*:not(.reveal):nth-child(5){animation-delay:.28s}
+.view.on>*:not(.reveal):nth-child(6){animation-delay:.35s}
+
+/* ── Scroll-revealed sections ── */
+/* Short defocus on entry. Blur is the one expensive property here (a per-frame
+   convolution over the whole section), so it is kept to one level — never also
+   on .reveal-stagger children, or the two would nest and filter twice — at a
+   small radius, and on a shorter clock than the fade so the costly part is over
+   first. It lands on `none` rather than blur(0): a zero-radius filter still
+   pins the section to the filtered compositing path for the life of the page.
+   Reveals are one-shot (the observer unobserves), so each section pays once. */
+.reveal{opacity:0;transform:translateY(48px);filter:blur(6px);transition:opacity .85s cubic-bezier(.22,1,.36,1),transform .85s cubic-bezier(.22,1,.36,1),filter .6s ease-out}
+.reveal.in-view{opacity:1;transform:none;filter:none}
+.reveal-stagger>*{opacity:0;transform:translateY(34px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.reveal.in-view .reveal-stagger>*{opacity:1;transform:none}
+.reveal.in-view .reveal-stagger>*:nth-child(1){transition-delay:.1s}
+.reveal.in-view .reveal-stagger>*:nth-child(2){transition-delay:.2s}
+.reveal.in-view .reveal-stagger>*:nth-child(3){transition-delay:.3s}
+.reveal.in-view .reveal-stagger>*:nth-child(4){transition-delay:.4s}
+
+/* ── Top scroll-progress bar ── */
+#scroll-progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;border-radius:0 3px 3px 0;background:linear-gradient(90deg,#111A19,#284139,#809076,#B86830,#F8D794);transition:width .12s linear;pointer-events:none}
+
+/* ── Mobile: both bars retract on scroll down and return on scroll up. The
+   bottom bar is already md:hidden, so it only ever animates on mobile. ── */
+@media(max-width:1023px){
+  #site-header,#mobile-nav{transition:transform .32s cubic-bezier(.22,1,.36,1)}
+  #site-header.nav-hidden{transform:translateY(calc(-100% - 1rem))}
+  #mobile-nav.nav-hidden{transform:translateY(calc(100% + 1.25rem + env(safe-area-inset-bottom)))}
+}
+
+/* ── Section dot rail (desktop) ── */
+.sec-rail{position:fixed;left:2.75rem;top:50%;transform:translateY(-50%);z-index:35;display:none;flex-direction:column;gap:.85rem;align-items:flex-start}
+/* White capsule behind the pip column only — the rail box is as wide as its
+   widest hover label, so the plate is drawn as a pseudo-element sized to the
+   9px pips instead of as a background on .sec-rail. */
+.sec-rail::before{content:'';position:absolute;z-index:-1;left:-.5rem;width:calc(9px + 1rem);top:-.7rem;bottom:-.7rem;border-radius:9999px;background:#fff;box-shadow:0 2px 14px rgba(17,26,25,.18)}
+@media(min-width:1280px){.sec-rail.on{display:flex}}
+.sec-dot{display:flex;flex-direction:row-reverse;align-items:center;gap:.6rem;background:none;border:0;padding:0}
+.sec-dot .lbl{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--sec-ink);background:rgba(255,255,255,.94);padding:.25rem .55rem;border-radius:9999px;box-shadow:0 2px 10px rgba(17,26,25,.16);opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none}
+.sec-dot:hover .lbl{opacity:1;transform:translateX(0)}
+.sec-dot .pip{width:9px;height:9px;border-radius:50%;background:#B3BFA9;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.sec-dot:hover .pip{background:#8D9187}
+.sec-dot.active .pip{background:var(--sec-accent);height:26px;border-radius:5px}
+
+/* Living hero: slow gradient pan + morphing aurora blobs + film grain */
+/* Hero entrance: fires on load, not on scroll — the masthead is above the fold,
+   so waiting for an IntersectionObserver pass would only delay it. The gradient
+   pan is restated here because the shorthand would otherwise drop it. */
+/* .hero-enter itself deliberately does not animate. It is the ancestor of the
+   payout card, and an entrance on it would hold that card's glass off for its
+   whole run (see .glass). Its two columns carry the entrance instead, which is
+   all it was ever doing — the outer fade only doubled theirs. */
+.hero-enter .hero-in-1{animation:heroInner .65s cubic-bezier(.22,1,.36,1) .14s both}
+/* hero-in-2 is on the payout card itself, not the column that holds it, so the
+   card fades in already frosted. A plain fade rather than heroInner's unblur:
+   an unblur here just fights the backdrop blur it is meant to be showing off.
+   The stagger behind hero-in-1 is kept, only tightened — at .45s the card sat
+   invisible long enough to read as a late load. */
+.hero-enter .hero-in-2{animation:fadeUp .65s cubic-bezier(.22,1,.36,1) .26s both}
+
+/* Animation budget: looping decor idles when off-screen or the tab is backgrounded */
+.anim-paused,.anim-paused::before,.anim-paused::after{animation-play-state:paused}
+body.anims-hidden *,body.anims-hidden *::before,body.anims-hidden *::after{animation-play-state:paused !important}
+.float-slow{animation:floatY 4.5s ease-in-out infinite}
+.grain::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.06;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.6'/></svg>")}
+
+/* Animated gradient text */
+.grad-text{background:linear-gradient(100deg,#B0740C,#F3C255 18%,#FEF3D4 38%,#F8D794 55%,#E9A722 78%,#F3C255);background-size:250% auto;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:gradPan 6s linear infinite}
+.serif-italic{font-family:"Times New Roman",Times,serif;font-style:italic;font-weight:700}
+
+/* Highlighted phrase in a heading: the underline draws itself in behind the
+   fade-and-unblur, so the stroke lands just after the words settle. */
+.ul-draw{position:relative;display:inline-block}
+.ul-draw::after{
+  content:'';position:absolute;left:0;right:0;bottom:-.08em;
+  height:.075em;min-height:2px;border-radius:99px;
+  background:currentColor;opacity:.5;
+  transform:scaleX(0);transform-origin:left center;
+  transition:transform .8s cubic-bezier(.22,1,.36,1) .45s;
+}
+/* .grad-text paints its text with a clipped gradient and leaves colour
+   transparent, so currentColor here would draw nothing. */
+/* .grad-text clips its gradient to the glyphs, and the background box stops at
+   the inline-block's border edge — with the hero h1 on 1.05 leading the italic
+   descenders fall outside it and paint as nothing. The padding grows the box
+   past them, and doubles as the gap above the stroke. */
+.grad-text.ul-draw{padding-bottom:.24em}
+.grad-text.ul-draw::after{background:linear-gradient(90deg,#F3C255,#FEF3D4 40%,#E9A722);opacity:.85;bottom:0}
+.reveal.in-view .ul-draw::after{transform:scaleX(1)}
+/* The hero never gets .in-view (it is above the fold and animates on load), and
+   the non-home views animate whenever they are switched on. */
+.hero-enter .ul-draw::after{animation:ulDraw .85s cubic-bezier(.22,1,.36,1) .6s both}
+.view.on:not(#view-home) .ul-draw::after{animation:ulDraw .85s cubic-bezier(.22,1,.36,1) .35s both}
+
+/* Recurring shine sweep across key CTAs */
+.btn-shine{position:relative;overflow:hidden}
+.btn-shine::after{content:'';position:absolute;top:0;bottom:0;left:0;width:45%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);transform:translateX(-130%) skewX(-18deg);animation:shineSweep 3.4s ease-in-out infinite;pointer-events:none}
+
+/* Slow pan for tailwind gradient banners */
+.bg-pan{background-size:200% 200% !important;animation:gradPan 10s ease infinite}
+
+/* Cart badge pop */
+.badge-pop{animation:popBadge .45s cubic-bezier(.34,1.56,.64,1)}
+
+/* Chat: message entrance + typing dots */
+#chat-log>div{animation:msgIn .35s cubic-bezier(.34,1.56,.64,1) both}
+.typing-dots{display:inline-flex;gap:4px;align-items:center;height:14px}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:#8D9187;animation:typingDot 1.1s infinite}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+
+/* Product card 3D tilt stage */
+#shop-grid{perspective:1200px}
+/* will-change was unconditional, which gives every card in the grid its own
+   compositor layer for the life of the page whether or not it is ever
+   hovered. Promoting on hover is what the hint is for. */
+.prod-card:hover{will-change:transform}
+
+/* Nav link underline slide-in + active state */
+.nav-link{position:relative;white-space:nowrap;transition:color .2s,background-color .2s}
+.nav-link::after{content:'';position:absolute;left:14px;right:14px;bottom:4px;height:2px;border-radius:2px;background:linear-gradient(90deg,#284139,#B86830,#F8D794);transform:scaleX(0);transform-origin:left;transition:transform .28s cubic-bezier(.22,1,.36,1)}
+.nav-link:hover::after{transform:scaleX(1)}
+.nav-link.active{color:#284139;background:#F2F5F3;font-weight:700}
+.nav-link.active::after{transform:scaleX(1)}
+
+/* Floating mobile tab bar: active pill */
+.mob-nav{color:#6E756C;padding:.4rem .9rem;border-radius:1rem;transition:color .25s,background-color .25s,transform .16s cubic-bezier(.34,1.56,.64,1)}
+.mob-nav.active{color:#284139;background:#C3D2C9}
+.mob-nav.active i{transform:translateY(-1px)}
+.mob-nav i{transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+
+/* Confetti bits */
+.confetti-bit{position:fixed;top:-3vh;width:8px;height:14px;border-radius:2px;z-index:99999;pointer-events:none;animation:confettiFall linear forwards}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
+}
+
+/* Vision Scan Animation */
+.scan-line{
+  position:absolute;
+  left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,#809076,#F8D794,transparent);
+  box-shadow:0 0 18px rgba(248,215,148,.7);
+  animation:scanAnim 2s infinite ease-in-out;
+}
+@keyframes scanAnim{
+  0%{top:5%}
+  50%{top:95%}
+  100%{top:5%}
+}
+
+/* ── 11. Home: hero value card, worth ledger & how-it-works timeline ──────
+   Deliberately CSS-only: transitions on hover/reveal, no infinite animations,
+   no 3D transforms, no extra JS. Nothing here paints unless the user
+   interacts, so the home page stays cheap to scroll.                      */
+
+/* Hero component receipt (sits on the dark hero gradient) */
+/* The panels that sit on the canopy are a 6-7% white wash — enough to read as
+   glass, not enough to stop the thread's marks running through their type. A
+   short backdrop blur settles what is behind them without turning any of them
+   into a second opaque slab, which is the thing the wash exists to avoid.
+   Panels elsewhere sit on flat ground and do not need it, so this is its own
+   class rather than a change to the wash.
+
+   ONE RULE, and it is not optional: nothing between .glass and the page may
+   carry opacity, filter or transform. Any of the three makes that ancestor a
+   backdrop root, and a backdrop root has no page behind it to sample — the
+   blur is simply off for as long as the property is set. An entrance animation
+   on a wrapper therefore reads as a panel that arrives legible and then, a
+   third of a second later, snaps to frosted. Put the entrance on the .glass
+   element itself: its own opacity, transform and filter are all fine, because
+   they apply to the panel after its backdrop has already been sampled. */
+/* Was blur(7px) saturate(112%) over the canopy — the single most expensive
+   thing on the masthead, because the canopy's gradient pans underneath it
+   and every frame of that pan forced the blur to be recomputed. The surface
+   is opaque now: --glass-dark is the colour the old stack actually resolved
+   to over the middle of the canopy, so the card reads the same standing
+   still. The blur that remains on this page is the one-shot filter on
+   .reveal and .hero-in-*, which runs once per element and then lands on
+   `none`. */
+.glass{
+  background:var(--glass-dark);
+  border-color:rgba(255,255,255,.14);
+}
+.val-card{
+  background:var(--glass-dark);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:1.5rem;
+  box-shadow:0 18px 40px rgba(0,0,0,.28);
+}
+.val-row{
+  display:flex;align-items:center;justify-content:space-between;gap:.75rem;
+  padding:.6rem .85rem;border-radius:.75rem;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+}
+
+/* Component ledger rows in "See what your phone is worth" */
+.ledger-row{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:.9rem;
+  padding:.7rem .85rem;border-radius:1rem;
+  border:1px solid var(--bdr);background:#fff;
+  transition:border-color .2s,box-shadow .2s,transform .2s;
+}
+.ledger-row:hover{border-color:var(--sec-accent);box-shadow:0 6px 18px rgba(40,65,57,.12);transform:translateX(3px)}
+
+/* Phone silhouette — a styled div, not an image or a model */
+.phone-glyph{
+  width:96px;height:186px;border-radius:1.15rem;
+  border:3px solid #284139;
+  background:linear-gradient(160deg,#111A19,#284139 58%,#4C7061);
+  box-shadow:0 14px 30px rgba(17,26,25,.30);
+  position:relative;
+}
+.phone-glyph::before{
+  content:'';position:absolute;top:9px;left:50%;transform:translateX(-50%);
+  width:34px;height:5px;border-radius:99px;background:rgba(255,255,255,.35);
+}
+.phone-glyph::after{
+  content:'';position:absolute;right:11px;top:26px;
+  width:22px;height:22px;border-radius:50%;
+  background:rgba(255,255,255,.16);box-shadow:0 26px 0 rgba(255,255,255,.1);
+}
+
+/* ── How it works: horizontal on desktop, stacked with arrows on mobile ── */
+.tl{list-style:none;margin:0;padding:0}
+.tl-step{position:relative;display:flex;flex-direction:column}
+.tl-head{display:flex;align-items:center;gap:.85rem;margin-bottom:.9rem}
+.tl-num{
+  flex:0 0 auto;width:3.25rem;height:3.25rem;border-radius:1rem;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;font-weight:600;letter-spacing:.03em;font-family:var(--font-display);
+  color:var(--gild);
+  background:linear-gradient(140deg,#284139,#111A19);
+  border:1px solid rgba(248,215,148,.28);
+  box-shadow:0 8px 18px rgba(17,26,25,.34);
+}
+/* Dashed connector with an arrowhead — desktop rail between steps */
+.tl-line{display:none;flex:1;height:0;border-top:2px dashed #CFD7C8;position:relative}
+.tl-line::after{
+  content:'';position:absolute;right:-1px;top:50%;transform:translateY(-50%);
+  border-left:8px solid #F8D794;border-top:5px solid transparent;border-bottom:5px solid transparent;
+}
+.tl-card{
+  flex:1;background:#fff;border:1px solid var(--bdr);border-top:4px solid var(--primary);
+  border-radius:1.25rem;padding:1.5rem;
+  box-shadow:0 1px 2px rgba(17,26,25,.06);
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+}
+.tl-card:hover{transform:translateY(-4px);box-shadow:0 16px 34px rgba(17,26,25,.16);border-color:var(--sec-accent)}
+.tl-card-hero{background:linear-gradient(165deg,#F2F5F3,#fff 55%);border-top-color:var(--accent)}
+.tl-title{font-size:1.5rem;line-height:1.2;font-weight:600;color:var(--ink);letter-spacing:normal}
+.tl-icon{
+  width:2.75rem;height:2.75rem;border-radius:.9rem;margin:1rem 0 .85rem;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.15rem;color:var(--primary);background:#F2F5F3;border:1px solid #C3D2C9;
+}
+.tl-value{font-size:3rem;line-height:1;font-weight:600;color:var(--primary);letter-spacing:normal;margin:.9rem 0 .6rem}
+.tl-meta{font-size:.8rem;font-weight:800;color:#414841}
+.tl-note{font-size:.75rem;line-height:1.6;color:#6E756C;margin-top:.5rem}
+/* Rail + arrowhead sit as one group, centred in the gap between two cards */
+.tl-down{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:4.25rem;gap:.45rem;color:#F8D794;font-size:1rem;line-height:1;
+}
+.tl-down::before{content:'';width:0;height:1.75rem;border-left:2px dashed #CFD7C8}
+.tl-step:last-child .tl-down{display:none}
+
+@media(min-width:1024px){
+  .tl-line{display:block}
+  .tl-step:last-child .tl-line{display:none}
+  /* The heads sit on one row, so the dashed rail reads as a single timeline */
+  .tl-card{padding:1.6rem 1.4rem}
+}
+
+/* ── 12. Sell flow: component grading & teardown ──────────────────────────
+   Two pieces that work as one: the grading tiles down the right of the Sell
+   tab and the exploded hardware diagram on the left that they re-price. Both
+   are state-driven from app.js —
+     .grade-tile.on ........... selected answer — setGrade()
+     #phone-explode.exploded .. device apart vs. assembled — playExplosion()
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Answer tiles. A whole tile is the hit target, so the dot is decoration —
+   the label carries the meaning and the border carries the state. */
+.grade-tile{
+  display:flex;align-items:flex-start;gap:.75rem;
+  width:100%;text-align:left;
+  padding:.75rem .875rem;
+  border:1.5px solid var(--bdr);
+  border-radius:.9rem;
+  background:#fff;
+  transition:border-color .2s,background .2s,box-shadow .2s,transform .16s cubic-bezier(.34,1.56,.64,1);
+}
+.grade-tile:hover{border-color:var(--wasabi);background:#FCFCF8}
+.grade-tile:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.grade-tile.on{
+  border-color:var(--primary);
+  background:linear-gradient(160deg,#F3F6F1 0%,#FFFFFF 70%);
+  box-shadow:0 6px 16px -8px rgba(40,65,57,.45);
+}
+.grade-tile-txt{display:flex;flex-direction:column;gap:.1rem;min-width:0;flex:1}
+.grade-tile-label{font-size:.8125rem;font-weight:700;color:#3D4A44;line-height:1.25}
+.grade-tile.on .grade-tile-label{color:var(--primary)}
+.grade-tile-desc{font-size:.6875rem;color:#8A918B;line-height:1.35}
+
+/* The dot mirrors the tile state; it never receives the click itself. */
+.grade-dot{
+  width:14px;height:14px;border-radius:9999px;flex:0 0 auto;margin-top:.15rem;
+  border:1.5px solid #C9CDC4;background:#fff;
+  transition:border-color .2s,background .2s,box-shadow .2s;
+}
+.grade-tile.on .grade-dot{border-color:var(--primary);background:var(--primary);box-shadow:0 0 0 3px rgba(40,65,57,.14)}
+
+/* Live valuation panel — the one dark surface on this page, so the running
+   figure reads as a running total rather than another form field. */
+.grade-panel{
+  background:radial-gradient(120% 120% at 20% 0%,#2B4239 0%,#111A19 62%);
+  border:1px solid rgba(248,215,148,.18);
+  box-shadow:0 26px 54px -22px rgba(17,26,25,.7);
+}
+
+/* ── Teardown separation ──
+   #phone-explode draws every part where it belongs in the EXPLODED view. Each
+   layer then carries --ay: the distance back to its seat inside the assembled
+   phone, which is the resting state. Adding .exploded drops that translate and
+   the device comes apart, --i staggering it from the screen downwards. */
+#phone-explode .ex-layer{
+  transform:translateY(var(--ay,0px));
+  transition:transform .9s cubic-bezier(.22,.9,.28,1);
+  transition-delay:calc(var(--i,0) * 90ms);
+}
+#phone-explode.exploded .ex-layer{transform:translateY(0)}
+
+/* Assembled, the device is one small object in a big stage, so the view is
+   zoomed onto it and pulls back as the parts spread out. The origin is the
+   assembled phone's own centre (it sits left of the label column), and the
+   nudge right re-centres it in the frame while zoomed. */
+#phone-explode{
+  transform-origin:34% 48%;
+  transform:translateX(16%) scale(1.55);
+  transition:transform .95s cubic-bezier(.22,.9,.28,1);
+}
+#phone-explode.exploded{transform:none}
+/* The shake rides on the wrapper so it cannot clobber that zoom. */
+#phone-shell{transform-origin:center}
+
+/* Callouts only make sense once there is a gap to point across. */
+#phone-explode .ex-label,
+#phone-explode .ex-lead{opacity:0;transition:opacity .45s ease}
+#phone-explode.exploded .ex-label,
+#phone-explode.exploded .ex-lead{
+  opacity:1;
+  transition-delay:calc(var(--i,0) * 90ms + 420ms);
+}
+#phone-explode .ex-lead{stroke:#809076;stroke-width:1.5;stroke-dasharray:3 3}
+
+#phone-explode .ex-name{
+  font-family:var(--font-mono);font-size:10px;font-weight:700;
+  fill:#9FB295;letter-spacing:.09em;
+}
+#phone-explode .ex-name-mute{fill:#6E7D71;font-size:9px}
+#phone-explode .ex-price{
+  font-family:var(--font-mono);font-size:19px;font-weight:800;fill:#F8D794;
+}
+/* Silkscreen on the parts themselves — small, and never the load-bearing text. */
+#phone-explode .ex-chip-txt{font-family:var(--font-mono);font-size:10px;font-weight:700;fill:#CFB98C}
+#phone-explode .ex-chip-sm{font-size:8px}
+#phone-explode .ex-screw circle{fill:#B79B62;stroke:#7D6835;stroke-width:1.5}
+
+
+/* ── WebGL teardown ──
+   Replaces the SVG above when three.js and the GPU are both available:
+   app.js unhides #teardown-3d and hides #phone-shell. The callouts stay HTML
+   so the figures keep the page's type and count up like every other number —
+   the render loop only writes their transform. */
+/* Tall enough for the whole sandwich, wide enough for the plates. */
+.teardown-3d{position:relative;width:100%;height:600px}
+#teardown-canvas{
+  display:block;width:100%;height:100%;
+  touch-action:none;              /* drag-orbit owns the gesture, not the page */
+  cursor:grab;
+}
+#teardown-canvas:active{cursor:grabbing}
+
+.teardown-labels{position:absolute;inset:0;pointer-events:none}
+/* Marker, stem, chip — reading outwards from the edge of the plate the
+   render loop projects. --td-accent is set per label to the material of the
+   part it names, so a callout and its object read as the same object. */
+.td-label{
+  position:absolute;top:0;left:0;
+  display:flex;align-items:center;white-space:nowrap;
+  opacity:0;will-change:transform,opacity;
+}
+.td-dot{
+  width:7px;height:7px;border-radius:9999px;flex:0 0 auto;
+  background:var(--td-accent,#284139);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--td-accent,#284139) 18%,transparent);
+}
+.td-stem{width:15px;height:1px;background:linear-gradient(90deg,var(--td-accent,#F8D794),transparent)}
+.td-txt{
+  display:flex;flex-direction:column;line-height:1.2;
+  padding:.3rem .6rem;border-radius:.55rem;
+  background:rgba(255,255,255,.95);
+  border:1px solid color-mix(in srgb,var(--td-accent,#284139) 45%,transparent);
+  box-shadow:0 8px 18px -10px rgba(17,26,25,.5);
+}
+.td-name{font-family:var(--font-mono);font-size:9px;font-weight:700;color:var(--td-accent,#555C55);letter-spacing:.09em;text-transform:uppercase}
+.td-val{font-family:var(--font-mono);font-size:14px;font-weight:800;color:var(--ink)}
+
+.teardown-hint-drag{
+  position:absolute;right:.75rem;bottom:.5rem;
+  font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;
+  text-transform:uppercase;color:#6E756C;pointer-events:none;
+}
+
+/* ── Sell tab on a phone ──────────────────────────────────────────────────
+   The stage and its callouts are sized for the two-column desktop layout,
+   where the left column is ~600px wide. Stacked into a 360px viewport the
+   same numbers stop fitting: the WebGL stage keeps a 600px height it no
+   longer has the width to fill, the SVG's figures scale down with the
+   viewBox until the rupee amounts are ~11px on screen, and the callout
+   chips — white-space:nowrap by design, so a part name never breaks across
+   lines — run past the canvas edge. Each of those is a number, so each is
+   scaled rather than switched off; the teardown reads the same, smaller. */
+@media (max-width: 639px){
+  .teardown-3d{height:400px}
+
+  /* Callouts: tighter chip, shorter stem, so a nowrap label still lands
+     inside a ~330px canvas. */
+  .td-stem{width:9px}
+  .td-txt{padding:.22rem .42rem;border-radius:.45rem}
+  .td-name{font-size:8px;letter-spacing:.06em}
+  .td-val{font-size:11px}
+  .td-dot{width:6px;height:6px}
+  .teardown-hint-drag{right:.5rem;bottom:.35rem;font-size:8px}
+
+  /* SVG type is inside a 560-wide viewBox, so it shrinks with the diagram.
+     At ~330px on screen that is a 0.59 scale — these sizes are picked to
+     land back on the ~11px/9px the desktop stage actually renders. */
+  #phone-explode .ex-price{font-size:30px}
+  #phone-explode .ex-name{font-size:15px}
+  #phone-explode .ex-name-mute{font-size:13px}
+}
+
+/* ── The cursor grid ───────────────────────
+   The pool of light the pointer drags across the page's imaginary dot matrix,
+   built by initCursorGrid() in app.js. The elements are created from JS and
+   only on pointer devices, so on touch none of this enters the DOM at all.
+
+   There is one canvas per ground, all drawing the same viewport lattice and
+   differing only in ink — see the module for why. The first is fixed to the
+   viewport and carries the ivory's brown ramp; the rest are absolute inside
+   the .canopy elements and carry the khaki ramp for the green. A canopy is a
+   stacking context whose background paints beneath its own children, so its
+   canvas lands on top of the green while the fixed one stays behind the whole
+   view; the canopy's mask and overflow then clip the pool to exactly the dark
+   ground, notched corners included.
+
+   Small boxes (188px), and repositioned only on the frames they are also
+   redrawn on — the lattice inside is pinned to the viewport, so moving a
+   canvas without redrawing would drag the dots along with it.
+
+   The ink is composited plainly, with no blend mode: each ramp runs from
+   near-opaque at the pointer out to nothing, and a blend would put the ground
+   in charge of that instead — which is the one thing the two ramps exist to
+   decide for themselves. */
+.cursor-grid{
+  position:fixed;
+  top:0;left:0;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .35s ease-out;
+  will-change:transform;
+}
+/* Inside a canopy, so placed against the canopy's own box rather than the
+   viewport. Left at the default z-index: it has to stay above the canopy's
+   background and its grain, which is what a plain child already does. */
+.cursor-grid-veil{position:absolute}
+.cursor-grid.on{opacity:1}
+
+/* ── The pointer ─────────────────────────────────────────────
+   The arrow is hidden and replaced by a brown disc, iPadOS-style: a tinted
+   fill inside a firmer ring, lagging the pointer by a few frames, swelling
+   and darkening when it is over something that can be clicked. Built by
+   initCursorDot() in app.js, and only on pointer devices — .cursor-dot-on
+   goes on <html> from there, so if the script never runs, or the device is a
+   touchscreen, the native cursor is untouched.
+
+   Two elements' worth of work in one: #cursor-dot carries the position on a
+   transform that is never transitioned (a transition there would rubber-band
+   the whole thing), and its ::before carries the shape, which is the only
+   part that animates between states. */
+html.cursor-dot-on,html.cursor-dot-on *{cursor:none !important}
+#cursor-dot{
+  position:fixed;
+  top:0;left:0;width:26px;height:26px;
+  z-index:2147483000;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .25s ease-out;
+  will-change:transform;
+}
+#cursor-dot.on{opacity:1}
+#cursor-dot::before{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:rgba(184,104,48,.20);
+  border:1.5px solid rgba(184,104,48,.62);
+  box-shadow:0 1px 5px rgba(184,104,48,.20);
+  transition:transform .18s cubic-bezier(.34,1.4,.64,1),background-color .18s ease,
+             border-color .18s ease,inset .18s ease,border-radius .18s ease;
+}
+/* Over anything clickable: bigger and more committed, the way the iPadOS
+   pointer thickens when it takes hold of a control. */
+#cursor-dot.hot::before{
+  transform:scale(1.55);
+  background:rgba(184,104,48,.28);
+  border-color:rgba(184,104,48,.80);
+}
+/* Over text the disc becomes the caret it replaced. This is the one state
+   worth keeping: hiding the native cursor otherwise takes the I-beam with it,
+   and a round pointer over a text field gives no hint where the click lands.
+   The shape is changed by insetting the ::before rather than scaling it, so
+   the ring stays 1.5px on both axes instead of being squashed with it. */
+#cursor-dot.beam::before{
+  inset:-4px 10px;
+  transform:none;
+  border-radius:3px;
+  background:rgba(184,104,48,.30);
+  border-color:rgba(184,104,48,.78);
+}
+/* Pressed: it tightens rather than growing again, so the click reads. */
+#cursor-dot.down::before{transform:scale(.82)}
+#cursor-dot.hot.down::before{transform:scale(1.28)}
+#cursor-dot.beam.down::before{transform:scale(1,.86)}
+
+/* ── The checkout wizard ─────────────────────────────────
+   Four steps behind one progress rail, driven by the checkout* functions in
+   app.js. The rail is the whole point of the thing: at any moment it says how
+   many steps there are, which one you are on, and which ones you have already
+   cleared — so nothing about the flow has to be guessed at from the buttons.
+
+   The geometry is tied to four steps and says so. The nodes are four equal
+   grid columns, so their centres sit at 12.5% and 87.5% of the row; the rail
+   spans exactly that, and the filled part is a fraction of it set from JS in
+   --wiz-p (0 at step 1, 1 at step 4). Changing the number of steps means
+   changing the two percentages with it. */
+.wiz-rail{
+  position:relative;
+  display:grid;grid-template-columns:repeat(4,1fr);
+}
+.wiz-rail::before,.wiz-rail::after{
+  content:'';position:absolute;top:13px;height:2px;border-radius:2px;
+}
+.wiz-rail::before{left:12.5%;width:75%;background:#E3E0D6}
+.wiz-rail::after{
+  left:12.5%;width:calc(75% * var(--wiz-p,0));background:var(--emerald);
+  transition:width .45s cubic-bezier(.4,0,.2,1);
+}
+.wiz-node{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:.45rem;
+  background:none;border:0;padding:0;
+  cursor:default;
+}
+/* Only a step you have already cleared is a live target; the rest are just
+   labels that happen to be in a <button>, so they say so to the pointer. */
+.wiz-node.done{cursor:pointer}
+.wiz-dot{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:11px;font-weight:700;
+  background:#fff;border:2px solid #E3E0D6;color:#A8AFA6;
+  transition:background-color .3s ease,border-color .3s ease,color .3s ease,box-shadow .3s ease;
+}
+.wiz-label{
+  font-family:var(--font-mono);font-size:8.5px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:#A8AFA6;
+  transition:color .3s ease;
+}
+.wiz-node.done .wiz-dot{background:var(--emerald);border-color:var(--emerald);color:#fff}
+.wiz-node.now  .wiz-dot{border-color:var(--emerald);color:var(--emerald);box-shadow:0 0 0 4px rgba(40,65,57,.11)}
+.wiz-node.done .wiz-label,.wiz-node.now .wiz-label{color:var(--emerald)}
+.wiz-node.done:hover .wiz-dot{box-shadow:0 0 0 4px rgba(40,65,57,.11)}
+
+/* One step is visible at a time. The entrance is 6px and 280ms — enough to
+   read as a step forward, short enough not to be waited on. */
+.wiz-step{display:none}
+.wiz-step.on{display:block;animation:wizIn .28s ease both}
+@keyframes wizIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Fields. Spelled once here rather than as a dozen repeats of the same
+   utility string in the markup. */
+.wiz-lab{
+  display:block;
+  font-family:var(--font-mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;color:#8A9188;
+  margin-bottom:.4rem;
+}
+.wiz-input{
+  width:100%;padding:.7rem .85rem;border-radius:.75rem;
+  background:#fff;border:1px solid #E2E8F0;
+  font-size:.8125rem;font-weight:600;color:#0F172A;
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+.wiz-input::placeholder{color:#CBD5E1;font-weight:500}
+.wiz-input:focus{outline:none;border-color:var(--emerald);box-shadow:0 0 0 3px rgba(40,65,57,.13)}
+textarea.wiz-input{resize:vertical;min-height:4.5rem}
+/* Set by the validator on the field it stopped at, cleared on the next edit. */
+.wiz-input.bad{border-color:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.12)}
+
+/* Payment method. A radio group that does not look like one. */
+.pay-pill{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;
+  padding:.75rem .5rem;border-radius:.85rem;
+  background:#fff;border:1.5px solid #E2E8F0;
+  font-size:11px;font-weight:700;color:#64748B;
+  transition:border-color .2s ease,background-color .2s ease,color .2s ease;
+}
+.pay-pill i{font-size:15px}
+.pay-pill:hover{border-color:#CBD5E1}
+.pay-pill.active{
+  border-color:var(--emerald);background:rgba(40,65,57,.05);color:var(--emerald);
+}
+/* Only the chosen method's fields exist; the others are not merely hidden,
+   so nothing in them can be read by the validator by accident. */
+.wiz-pay{display:none}
+.wiz-pay.on{display:block}
+
+/* Placing the order: the button says what it is doing and stops accepting
+   clicks, which is the only moment in the flow that is not instant. */
+#wiz-next[disabled]{opacity:.62;cursor:default}
+
+/* ── Select fields ───────────────────────────────────────────
+   The page's own replacement for a native <select>'s option list, built by
+   initSelects() in app.js. Two shapes from one set of rules: a popover under
+   the field on a mouse, a bottom sheet on a phone.
+
+   The trigger is deliberately thin here. It is given the <select>'s own class
+   list at build time, so each field keeps the size, radius, ground and focus
+   ring it was written with in the markup — the contact form's dark-panel
+   styling included — and this rule only adds what a button needs to lay out
+   like one: the value on the left, the caret on the right, and no centring. */
+.xsel{position:relative}
+
+/* Clipped rather than display:none. The element is still the field the form
+   submits and the browser autofills; it is only taken out of the tab order
+   and off the accessibility tree, both of which the button now covers. */
+.xsel-native{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;
+  clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;
+  pointer-events:none;
+}
+
+.xsel-btn{
+  display:flex;align-items:center;justify-content:space-between;gap:.6rem;
+  text-align:left;line-height:1.3;cursor:pointer;
+}
+.xsel-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The placeholder option, dimmed the way a native one is. */
+.xsel-val.is-empty{opacity:.55}
+.xsel-caret{flex:none;font-size:.7em;opacity:.55;transition:transform .2s ease}
+.xsel-btn[aria-expanded="true"] .xsel-caret{transform:rotate(180deg)}
+
+/* Above the modals (999) and below the toast (9999): a select inside a dialog
+   has to clear the dialog, and nothing ever has to clear a message. */
+.xsel-pop{
+  position:fixed;z-index:9990;
+  display:flex;flex-direction:column;
+  max-width:min(92vw,24rem);
+  background:#fff;border:1px solid #E7E5DE;border-radius:.9rem;
+  box-shadow:0 18px 44px rgba(17,26,25,.18),0 2px 6px rgba(17,26,25,.06);
+  overflow:hidden;
+  opacity:0;transform:translateY(-4px);
+  transition:opacity .15s ease-out,transform .15s ease-out;
+}
+.xsel-pop[hidden]{display:none}
+.xsel-pop.is-open{opacity:1;transform:none}
+
+/* overscroll-behavior so flicking to the end of a long list does not hand the
+   scroll to the page behind it — the reason the sheet needs no scroll lock of
+   its own beyond the one on <body>. */
+.xsel-list{
+  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:.3rem;
+}
+.xsel-opt{
+  display:flex;align-items:center;gap:.5rem;min-height:2.25rem;
+  padding:.5rem .65rem;border-radius:.55rem;
+  font-size:.8125rem;font-weight:600;color:#334155;
+  cursor:pointer;
+}
+/* is-on is the keyboard's and the hover's shared idea of "where you are",
+   kept separate from aria-selected, which is what the field actually holds. */
+.xsel-opt.is-on{background:rgba(40,65,57,.08)}
+.xsel-opt[aria-selected="true"]{color:var(--emerald);font-weight:800}
+.xsel-opt[aria-selected="true"]::after{content:'✓';margin-left:auto;font-size:.85em}
+.xsel-opt.is-off{color:#94A3B8;font-weight:600;cursor:default}
+.xsel-opt.is-off.is-on{background:none}
+.xsel-opt.is-off::after{content:none}
+
+.xsel-head{display:none}
+
+/* ── The sheet ──
+   Anything narrow or touched gets this instead: pinned to the bottom edge
+   where a thumb is, over a scrim, with the field's label at the top because a
+   sheet has left its field behind and has to say what it is for. */
+.xsel-veil{
+  position:fixed;inset:0;z-index:9989;
+  background:rgba(17,26,25,.66);
+}
+.xsel-veil[hidden]{display:none}
+body.xsel-locked{overflow:hidden}
+
+.xsel-pop.is-sheet{
+  left:0;right:0;bottom:0;top:auto;
+  width:auto;max-width:none;min-width:0;
+  max-height:min(72vh,32rem);
+  border:0;border-radius:1.25rem 1.25rem 0 0;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  transform:translateY(100%);
+  transition:transform .26s cubic-bezier(.22,1,.36,1),opacity .2s ease-out;
+}
+.xsel-pop.is-sheet.is-open{transform:none}
+.xsel-pop.is-sheet .xsel-head{
+  display:block;padding:.75rem 1.1rem .7rem;
+  font-family:var(--font-mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;color:#8A9188;
+  border-bottom:1px solid #F1F5F9;
+}
+/* The grab handle every sheet has, drawn by the title rather than by another
+   element that would have to be created and hidden on the desktop. */
+.xsel-pop.is-sheet .xsel-head::before{
+  content:'';display:block;width:2.25rem;height:4px;border-radius:2px;
+  background:#E2E8F0;margin:0 auto .8rem;
+}
+.xsel-pop.is-sheet .xsel-list{padding:.4rem .6rem .9rem}
+.xsel-pop.is-sheet .xsel-opt{min-height:3rem;padding:.7rem .8rem;font-size:.875rem}
+
+
+/* ── Off-screen sections ──────────────────────────────────────────────────
+   content-visibility:auto lets the browser skip style, layout and paint for
+   a subtree while it is outside the viewport, and pick it up again as it
+   scrolls in. `auto` on contain-intrinsic-size means the real height is
+   remembered after the section has been rendered once, so the placeholder
+   matches the section from then on and the scrollbar does not shift under
+   the reader.
+
+   Scoped to `#view-home>section.reveal` — six sections, none of which owns a
+   .canopy. That exclusion is the point: a canopy hosts the glyph veil and
+   the cursor grid's dark-ground canvas, both of which are measured against
+   the viewport every frame, and content-visibility implies paint and layout
+   containment on the ancestor. The masthead and the closing panel are on
+   screen most of the time anyway, so there is nothing to win there and a
+   measurement to lose. #sec-cta sits inside .closing-panel rather than being
+   a child of #view-home, so the child combinator already passes it over. */
+#view-home>section.reveal{
+  content-visibility:auto;
+  contain-intrinsic-size:auto 700px;
+}
+
+
+/* A machine that reported four cores or less holds a still canopy. The pan
+   animates background-position across a 180% multi-gradient on a 100vw
+   element, which repaints that whole area every frame it runs. See the
+   low-end gate in app.js. */
+.lowfi .canopy{animation:none}
+
+/* Parked while the page is idle — see the activity clock in app.js. The
+   selector is the same decorative set initAnimBudget already watches, not a
+   universal one: pausing everything would also catch the toast, the typing
+   dots and the scan sweep, which are transient and only ever run because
+   something just happened. */
+body.idle .canopy,
+body.idle .bg-pan,
+body.idle .grad-text,
+body.idle .gilt,
+body.idle .gilt-fill,
+body.idle .btn-shine,
+body.idle .btn-shine::after,
+body.idle .float-slow{
+  animation-play-state:paused;
+}
+
+/* The reveal blur is a full-section filter that re-runs every frame of its
+   own 0.6s transition — affordable on a desktop, not on a machine that
+   reported four cores. Those get the fade and the rise, without the blur. */
+.lowfi .reveal{
+  filter:none;
+  transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);
+}
